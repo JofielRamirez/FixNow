@@ -1,5 +1,6 @@
 package com.example.fixnow.screens
 
+import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -31,6 +32,10 @@ import com.example.fixnow.TextGray
 
 @Composable
 fun PantallaInicio(navController: NavController) {
+
+    val user = FirebaseAuth.getInstance().currentUser
+    val nombreUsuario = user?.displayName ?: "Usuario"
+
     Scaffold(
         bottomBar = { BottomNavBar() }
     ) { padding ->
@@ -48,6 +53,14 @@ fun PantallaInicio(navController: NavController) {
                         .background(brush = Brush.verticalGradient(colors = listOf(OrangePrimary, OrangeLight)))
                 ) {
                     Text("Calle Alcatraz #1515, Tecate", color = Color.White, modifier = Modifier.padding(16.dp), fontSize = 14.sp)
+                    Text(
+                        text = "Hola, $nombreUsuario 👋",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 16.dp, top = 40.dp)
+                    )
+
                 }
                 Card(
                     modifier = Modifier

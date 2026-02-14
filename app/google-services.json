@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "305295534074",
+    "project_id": "fixnow-dc2f6",
+    "storage_bucket": "fixnow-dc2f6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:305295534074:android:721f1faacfabf5c56ba643",
+        "android_client_info": {
+          "package_name": "com.example.fixnow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "305295534074-dipoklshe4ic2ktu2h5pol1pf3pve3bi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fixnow",
+            "certificate_hash": "37c801f6b76dd2bb37290d25a3d4852c2346e66f"
+          }
+        },
+        {
+          "client_id": "305295534074-k3boufslm1l9c5l80l9q8lhja3fblrpt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAi6DpXtdsGfjDm1aKXi74-Xo_Ywdxl8_I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "305295534074-k3boufslm1l9c5l80l9q8lhja3fblrpt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
