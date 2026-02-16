@@ -10,6 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.fixnow.screens.PantallaInicio
 import com.example.fixnow.screens.PantallaListaServicios
 import com.example.fixnow.screens.PantallaLogin
+import com.example.fixnow.screens.PantallaRegistro
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +26,7 @@ fun AppNavigation() {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "login") {
         composable("login") { PantallaLogin(navController) }
+        composable ("registro") { PantallaRegistro(navController) }
         composable("inicio") { PantallaInicio(navController) }
         composable("servicios/{categoria}") { backStackEntry ->
             val categoria = backStackEntry.arguments?.getString("categoria") ?: "Servicio"

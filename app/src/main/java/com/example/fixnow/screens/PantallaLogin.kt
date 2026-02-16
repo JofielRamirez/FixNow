@@ -5,10 +5,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import com.google.android.gms.auth.api.signin.*
-import com.google.android.gms.common.api.ApiException
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,6 +29,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fixnow.OrangePrimary
+import com.example.fixnow.data.UsuarioRepository // 🔥 IMPORTANTE: Importamos tu nuevo archivo
+import com.google.android.gms.auth.api.signin.*
+import com.google.android.gms.common.api.ApiException
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 
 @Composable
 fun PantallaLogin(navController: NavController) {
@@ -65,8 +66,22 @@ fun PantallaLogin(navController: NavController) {
                 auth.signInWithCredential(credential)
                     .addOnCompleteListener { authTask ->
                         if (authTask.isSuccessful) {
-                            navController.navigate("inicio") {
-                                popUpTo("login") { inclusive = true }
+                            val user = auth.currentUser
+                            if (user != null) {
+                                // 🔥 USAMOS EL REPOSITORIO PARA GOOGLE TAMBIÉN
+                                UsuarioRepository.guardarUsuario(
+                                    uid = user.uid, // Es uid, no id
+                                    email = user.email ?: "",
+                                    nombre = user.displayName ?: "Usuario Google",
+                                    onSuccess = {
+                                        navController.navigate("inicio") {
+                                            popUpTo("login") { inclusive = true }
+                                        }
+                                    },
+                                    onFailure = { e ->
+                                        mensajeError = "Error BD: ${e.message}"
+                                    }
+                                )
                             }
                         } else {
                             mensajeError = "Error con Firebase Google"
@@ -207,7 +222,6 @@ fun PantallaLogin(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔥 BOTÓN GOOGLE FUNCIONANDO
             Button(
                 onClick = {
                     launcher.launch(googleSignInClient.signInIntent)
@@ -235,35 +249,20 @@ fun PantallaLogin(navController: NavController) {
                 Text("¿No tienes cuenta? ", fontSize = 14.sp, color = Color.Black)
 
                 Text(
-                    "Crea una cuenta",
+                    "Crear una cuenta",
                     fontSize = 14.sp,
                     color = Color(0xFF5E35B1),
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable {
-
-                        if (usuario.isBlank() || password.isBlank()) {
-                            mensajeError = "Completa todos los campos"
-                            return@clickable
-                        }
-
-                        auth.createUserWithEmailAndPassword(usuario.trim(), password)
-                            .addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    navController.navigate("inicio") {
-                                        popUpTo("login") { inclusive = true }
-                                    }
-                                } else {
-                                    mensajeError =
-                                        task.exception?.localizedMessage ?: "Error al registrar"
-                                }
-                            }
+                        // 🔥 AHORA SOLO NAVEGA A LA PANTALLA DE REGISTRO.
+                        // El proceso de guardar se hace en PantallaRegistro.kt
+                        navController.navigate("registro")
                     }
                 )
             }
         }
     }
 }
-
 
 @Composable
 fun CampoTextoPersonalizado(
