@@ -1,6 +1,5 @@
 package com.example.fixnow.screens
 
-import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,18 +22,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 
-// IMPORTANTE: Estos imports ahora sí funcionarán porque creamos los archivos en Paso 1 y 2
+// Importes de Supabase y de tu proyecto
+import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.model.Categoria
 import com.example.fixnow.OrangePrimary
 import com.example.fixnow.OrangeLight
 import com.example.fixnow.BackgroundWhite
 import com.example.fixnow.TextGray
+import io.github.jan.supabase.auth.auth
 
 @Composable
 fun PantallaInicio(navController: NavController) {
 
-    val user = FirebaseAuth.getInstance().currentUser
-    val nombreUsuario = user?.displayName ?: "Usuario"
+    // CAMBIO: Obtener el usuario desde Supabase en lugar de Firebase
+    val session = SupabaseClient.client.auth.currentSessionOrNull()
+    val user = session?.user
+
+    // En Supabase, el nombre suele venir en user_metadata
+    val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()
+        ?: user?.email?.substringBefore("@")
+        ?: "Usuario"
 
     Scaffold(
         bottomBar = { BottomNavBar() }
@@ -81,7 +88,7 @@ fun PantallaInicio(navController: NavController) {
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-            Text("¿Que servicio buscas?", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
+            Text("¿Qué servicio buscas?", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
             Spacer(modifier = Modifier.height(24.dp))
 
             val categorias = listOf(

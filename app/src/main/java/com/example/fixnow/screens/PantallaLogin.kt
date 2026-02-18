@@ -1,10 +1,5 @@
 package com.example.fixnow.screens
 
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -29,11 +23,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fixnow.OrangePrimary
-import com.example.fixnow.data.UsuarioRepository // 🔥 IMPORTANTE: Importamos tu nuevo archivo
-import com.google.android.gms.auth.api.signin.*
-import com.google.android.gms.common.api.ApiException
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
+import com.example.fixnow.data.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Google
+import io.github.jan.supabase.auth.providers.builtin.Email
+
+
+
+
+import kotlinx.coroutines.launch
 
 @Composable
 fun PantallaLogin(navController: NavController) {
@@ -43,53 +41,18 @@ fun PantallaLogin(navController: NavController) {
     var recordarUsuario by rememberSaveable { mutableStateOf(false) }
     var mensajeError by remember { mutableStateOf("") }
 
-    val auth = FirebaseAuth.getInstance()
-    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    // 🔥 CONFIGURACIÓN GOOGLE
-    val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-        .requestIdToken("305295534074-k3boufslm1l9c5l80l9q8lhja3fblrpt.apps.googleusercontent.com")
-        .requestEmail()
-        .build()
-
-    val googleSignInClient = GoogleSignIn.getClient(context, googleSignInOptions)
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-
-                auth.signInWithCredential(credential)
-                    .addOnCompleteListener { authTask ->
-                        if (authTask.isSuccessful) {
-                            val user = auth.currentUser
-                            if (user != null) {
-                                // 🔥 USAMOS EL REPOSITORIO PARA GOOGLE TAMBIÉN
-                                UsuarioRepository.guardarUsuario(
-                                    uid = user.uid, // Es uid, no id
-                                    email = user.email ?: "",
-                                    nombre = user.displayName ?: "Usuario Google",
-                                    onSuccess = {
-                                        navController.navigate("inicio") {
-                                            popUpTo("login") { inclusive = true }
-                                        }
-                                    },
-                                    onFailure = { e ->
-                                        mensajeError = "Error BD: ${e.message}"
-                                    }
-                                )
-                            }
-                        } else {
-                            mensajeError = "Error con Firebase Google"
-                        }
-                    }
-
-            } catch (e: ApiException) {
-                mensajeError = "Error Google: ${e.localizedMessage}"
+    // NUEVO: Observar cambios en la sesión
+    LaunchedEffect(Unit) {
+        SupabaseClient.client.auth.sessionStatus.collect { status ->
+            if (status is io.github.jan.supabase.auth.status.SessionStatus.Authenticated) {
+                // Si el usuario se loguea (ya sea por Google o Email), lo mandamos al inicio
+                navController.navigate("inicio") {
+                    popUpTo("login") {
+                        inclusive = true
+                    } // Evita que regrese al login con el botón de atrás
+                }
             }
         }
     }
@@ -192,22 +155,29 @@ fun PantallaLogin(navController: NavController) {
 
             Button(
                 onClick = {
-                    if (usuario.isBlank() || password.isBlank()) {
+                    val emailLimpio = usuario.trim()
+                    val passLimpia = password
+
+                    if (emailLimpio.isBlank() || passLimpia.isBlank()) {
                         mensajeError = "Completa todos los campos"
                         return@Button
                     }
 
-                    auth.signInWithEmailAndPassword(usuario.trim(), password)
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                navController.navigate("inicio") {
-                                    popUpTo("login") { inclusive = true }
-                                }
-                            } else {
-                                mensajeError =
-                                    task.exception?.localizedMessage ?: "Error al iniciar sesión"
+                    // Inicio de sesión con Supabase
+                    scope.launch {
+                        try {
+                            SupabaseClient.client.auth.signInWith(Email) {
+                                email = emailLimpio
+                                password = passLimpia
                             }
+                            // Si no lanzó excepción, el login fue exitoso:
+                            navController.navigate("inicio") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        } catch (e: Exception) {
+                            mensajeError = "Correo o contraseña incorrectos"
                         }
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFCC8E00)
@@ -219,21 +189,29 @@ fun PantallaLogin(navController: NavController) {
             ) {
                 Text("Ingresar")
             }
+            Spacer(modifier = Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
+            OutlinedButton(
                 onClick = {
-                    launcher.launch(googleSignInClient.signInIntent)
+                    scope.launch {
+                        try {
+                            SupabaseClient.client.auth.signInWith(
+                                provider = Google,
+                                redirectUrl = "fixnow://login"
+                            )
+
+
+                        } catch (e: Exception) {
+                            mensajeError = "Error al conectar con Google"
+                        }
+                    }
                 },
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .height(50.dp),
+                modifier = Modifier.fillMaxWidth(0.6f).height(50.dp),
                 shape = RoundedCornerShape(50)
             ) {
-                Text("Iniciar sesión con Google")
+                Text("Continuar con Google")
             }
-
             if (mensajeError.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -254,8 +232,6 @@ fun PantallaLogin(navController: NavController) {
                     color = Color(0xFF5E35B1),
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable {
-                        // 🔥 AHORA SOLO NAVEGA A LA PANTALLA DE REGISTRO.
-                        // El proceso de guardar se hace en PantallaRegistro.kt
                         navController.navigate("registro")
                     }
                 )
