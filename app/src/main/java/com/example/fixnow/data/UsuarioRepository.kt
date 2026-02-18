@@ -1,29 +1,36 @@
 package com.example.fixnow.data
 
-import com.google.firebase.firestore.FirebaseFirestore
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.Serializable
+
+/**
+ * Modelo de datos para la tabla 'usuarios' en Supabase.
+ * El uso de @Serializable permite que el SDK de Supabase convierta
+ * automáticamente este objeto a JSON para la base de datos.
+ */
+@Serializable
+data class UsuarioPerfil(
+    val uid: String,
+    val email: String,
+    val nombre: String
+)
 
 object UsuarioRepository {
-    private val db = FirebaseFirestore.getInstance()
+    // Referencia al cliente que creaste en SupabaseClient.kt
+    private val client = SupabaseClient.client
 
-    // Esta función recibe los datos y funciones de éxito/error
-    fun guardarUsuario(
-        uid: String,
-        email: String,
-        nombre: String,
-        onSuccess: () -> Unit,
-        onFailure: (Exception) -> Unit
-    ) {
-        val usuarioData = hashMapOf(
-            "uid" to uid,
-            "email" to email,
-            "nombre" to nombre,
-            "fechaRegistro" to System.currentTimeMillis()
+    /**
+     * Guarda la información del usuario en la tabla de PostgreSQL.
+     * Al ser una función 'suspend', debe ser llamada dentro de un CoroutineScope.
+     */
+    suspend fun guardarUsuario(uid: String, email: String, nombre: String) {
+        val perfil = UsuarioPerfil(
+            uid = uid,
+            email = email,
+            nombre = nombre
         )
 
-        // Guarda en la colección "usuarios" usando el UID
-        db.collection("usuarios").document(uid)
-            .set(usuarioData)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { e -> onFailure(e) }
+        // Realiza la inserción en la tabla 'usuarios'
+        client.postgrest["usuarios"].insert(perfil)
     }
 }

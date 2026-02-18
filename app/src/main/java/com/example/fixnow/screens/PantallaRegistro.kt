@@ -19,8 +19,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fixnow.OrangePrimary
+import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.data.UsuarioRepository
-import com.google.firebase.auth.FirebaseAuth
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
+import kotlinx.coroutines.launch
 
 @Composable
 fun PantallaRegistro(navController: NavController) {
@@ -29,7 +32,8 @@ fun PantallaRegistro(navController: NavController) {
     var password by rememberSaveable { mutableStateOf("") }
     var mensajeError by remember { mutableStateOf("") }
 
-    val auth = FirebaseAuth.getInstance()
+    // Scope para manejar las funciones suspendidas de Supabase
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -69,33 +73,43 @@ fun PantallaRegistro(navController: NavController) {
 
             Button(
                 onClick = {
-                    if (nombre.isBlank() || email.isBlank() || password.isBlank()) {
+                    // Extraemos los valores a variables locales para evitar conflictos con 'this' en el bloque de Supabase
+                    val emailLimpio = email.trim()
+                    val passwordLimpio = password
+                    val nombreRegistro = nombre
+
+                    if (nombreRegistro.isBlank() || emailLimpio.isBlank() || passwordLimpio.isBlank()) {
                         mensajeError = "Completa todos los campos"
                         return@Button
                     }
-                    // 1. Creamos el usuario en Firebase Auth
-                    auth.createUserWithEmailAndPassword(email.trim(), password)
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                val user = auth.currentUser
-                                if (user != null) {
-                                    // 2. 🚀 LLAMAMOS A NUESTRO ARCHIVO SEPARADO PARA GUARDAR EN BASE DE DATOS
-                                    UsuarioRepository.guardarUsuario(
-                                        uid = user.uid,
-                                        email = user.email ?: "",
-                                        nombre = nombre,
-                                        onSuccess = {
-                                            navController.navigate("inicio") { popUpTo("login") { inclusive = true } }
-                                        },
-                                        onFailure = { e ->
-                                            mensajeError = "Error BD: ${e.message}"
-                                        }
-                                    )
-                                }
-                            } else {
-                                mensajeError = task.exception?.localizedMessage ?: "Error al registrar"
+
+                    scope.launch {
+                        try {
+                            // 1. Registro en Supabase Auth
+                            SupabaseClient.client.auth.signUpWith(Email) {
+                                this.email = emailLimpio
+                                this.password = passwordLimpio
                             }
+
+                            // 2. Obtener el UID generado
+                            val uid = SupabaseClient.client.auth.currentUserOrNull()?.id
+
+                            if (uid != null) {
+                                // 3. Guardar en la tabla 'usuarios' de tu base de datos
+                                UsuarioRepository.guardarUsuario(
+                                    uid = uid,
+                                    email = emailLimpio,
+                                    nombre = nombreRegistro
+                                )
+
+                                navController.navigate("inicio") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            mensajeError = e.localizedMessage ?: "Error al registrar"
                         }
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCC8E00)),
                 shape = RoundedCornerShape(50),
@@ -114,7 +128,7 @@ fun PantallaRegistro(navController: NavController) {
             Row {
                 Text("¿Ya tienes cuenta? ", fontSize = 14.sp, color = Color.Black)
                 Text("Inicia sesión", fontSize = 14.sp, color = Color(0xFF5E35B1), fontWeight = FontWeight.Bold, modifier = Modifier.clickable {
-                    navController.popBackStack() // Regresa a la pantalla de login
+                    navController.popBackStack()
                 })
             }
         }
