@@ -9,20 +9,19 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-
-// Importes de Supabase y de tu proyecto
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.fixnow.R
 import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.model.Categoria
 import com.example.fixnow.OrangePrimary
@@ -33,18 +32,14 @@ import io.github.jan.supabase.auth.auth
 
 @Composable
 fun PantallaInicio(navController: NavController) {
-
-    // CAMBIO: Obtener el usuario desde Supabase en lugar de Firebase
     val session = SupabaseClient.client.auth.currentSessionOrNull()
     val user = session?.user
-
-    // En Supabase, el nombre suele venir en user_metadata
-    val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()
+    val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()?.trim('"')
         ?: user?.email?.substringBefore("@")
         ?: "Usuario"
 
     Scaffold(
-        bottomBar = { BottomNavBar() }
+        bottomBar = { BottomNavBar(navController) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -59,15 +54,19 @@ fun PantallaInicio(navController: NavController) {
                         .height(160.dp)
                         .background(brush = Brush.verticalGradient(colors = listOf(OrangePrimary, OrangeLight)))
                 ) {
-                    Text("Calle Alcatraz #1515, Tecate", color = Color.White, modifier = Modifier.padding(16.dp), fontSize = 14.sp)
                     Text(
-                        text = "Hola, $nombreUsuario 👋",
+                        "Sin ubicación",
+                        color = Color.White,
+                        modifier = Modifier.padding(16.dp),
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "Hola, $nombreUsuario ",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(start = 16.dp, top = 40.dp)
                     )
-
                 }
                 Card(
                     modifier = Modifier
@@ -79,7 +78,10 @@ fun PantallaInicio(navController: NavController) {
                     elevation = CardDefaults.cardElevation(8.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                    ) {
                         Icon(Icons.Default.LocationOn, contentDescription = null, tint = TextGray)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Ingresa tu ubicación", color = TextGray)
@@ -88,7 +90,12 @@ fun PantallaInicio(navController: NavController) {
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-            Text("¿Qué servicio buscas?", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
+            Text(
+                "¿Qué servicio buscas?",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
             Spacer(modifier = Modifier.height(24.dp))
 
             val categorias = listOf(
@@ -137,9 +144,61 @@ fun CardCategoria(cat: Categoria, onClick: () -> Unit) {
 }
 
 @Composable
-fun BottomNavBar() {
-    NavigationBar(containerColor = Color.White) {
-        NavigationBarItem(icon = { Icon(Icons.Outlined.Home, contentDescription = "Home") }, selected = true, onClick = { })
-        NavigationBarItem(icon = { Icon(Icons.Outlined.Person, contentDescription = "Perfil") }, selected = false, onClick = { })
+fun BottomNavBar(navController: NavController) {
+    val amarillo = Color(0xFFFFB300)
+    val gris = Color(0xFF9E9E9E)
+    val navBackStackEntry = navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry.value?.destination?.route?.substringBefore("/") ?: "inicio"
+
+    NavigationBar(
+        containerColor = Color.White,
+        tonalElevation = 8.dp
+    ) {
+        NavigationBarItem(
+            icon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_inicio),
+                    contentDescription = "Inicio",
+                    modifier = Modifier.size(24.dp),
+                    tint = if (currentRoute == "inicio") amarillo else gris
+                )
+            },
+            label = { Text("Inicio", color = if (currentRoute == "inicio") amarillo else gris, fontSize = 12.sp) },
+            selected = currentRoute == "inicio",
+            onClick = {
+                navController.navigate("inicio") {
+                    popUpTo("inicio") { inclusive = true }
+                }
+            },
+            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+        )
+        NavigationBarItem(
+            icon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_servicios),
+                    contentDescription = "Servicios",
+                    modifier = Modifier.size(24.dp),
+                    tint = if (currentRoute == "servicios_tab") amarillo else gris
+                )
+            },
+            label = { Text("Servicios", color = if (currentRoute == "servicios_tab") amarillo else gris, fontSize = 12.sp) },
+            selected = currentRoute == "servicios_tab",
+            onClick = { navController.navigate("servicios_tab") },
+            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+        )
+        NavigationBarItem(
+            icon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_perfil),
+                    contentDescription = "Perfil",
+                    modifier = Modifier.size(24.dp),
+                    tint = if (currentRoute == "perfil") amarillo else gris
+                )
+            },
+            label = { Text("Perfil", color = if (currentRoute == "perfil") amarillo else gris, fontSize = 12.sp) },
+            selected = currentRoute == "perfil",
+            onClick = { navController.navigate("perfil") },
+            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+        )
     }
 }

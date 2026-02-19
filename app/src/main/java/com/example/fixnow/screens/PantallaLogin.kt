@@ -43,20 +43,6 @@ fun PantallaLogin(navController: NavController) {
 
     val scope = rememberCoroutineScope()
 
-    // NUEVO: Observar cambios en la sesión
-    LaunchedEffect(Unit) {
-        SupabaseClient.client.auth.sessionStatus.collect { status ->
-            if (status is io.github.jan.supabase.auth.status.SessionStatus.Authenticated) {
-                // Si el usuario se loguea (ya sea por Google o Email), lo mandamos al inicio
-                navController.navigate("inicio") {
-                    popUpTo("login") {
-                        inclusive = true
-                    } // Evita que regrese al login con el botón de atrás
-                }
-            }
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -160,32 +146,28 @@ fun PantallaLogin(navController: NavController) {
 
                     if (emailLimpio.isBlank() || passLimpia.isBlank()) {
                         mensajeError = "Completa todos los campos"
-                        return@Button
-                    }
+                    } else {
+                        mensajeError = ""
+                        scope.launch {
+                            try {
+                                // Limpiar sesión previa por si acaso
+                                try { SupabaseClient.client.auth.signOut() } catch (_: Exception) {}
 
-                    // Inicio de sesión con Supabase
-                    scope.launch {
-                        try {
-                            SupabaseClient.client.auth.signInWith(Email) {
-                                email = emailLimpio
-                                password = passLimpia
+                                SupabaseClient.client.auth.signInWith(Email) {
+                                    email = emailLimpio
+                                    password = passLimpia
+                                }
+                            } catch (e: Exception) {
+                                mensajeError = e.message
+                                    ?: e.localizedMessage
+                                            ?: "Error desconocido"
                             }
-                            // Si no lanzó excepción, el login fue exitoso:
-                            navController.navigate("inicio") {
-                                popUpTo("login") { inclusive = true }
-                            }
-                        } catch (e: Exception) {
-                            mensajeError = "Correo o contraseña incorrectos"
                         }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFCC8E00)
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCC8E00)),
                 shape = RoundedCornerShape(50),
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(50.dp)
+                modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)
             ) {
                 Text("Ingresar")
             }
@@ -194,16 +176,30 @@ fun PantallaLogin(navController: NavController) {
 
             OutlinedButton(
                 onClick = {
-                    scope.launch {
-                        try {
-                            SupabaseClient.client.auth.signInWith(
-                                provider = Google,
-                                redirectUrl = "fixnow://login"
-                            )
+                    val emailLimpio = usuario.trim()
+                    val passLimpia = password
 
-
-                        } catch (e: Exception) {
-                            mensajeError = "Error al conectar con Google"
+                    if (emailLimpio.isBlank() || passLimpia.isBlank()) {
+                        mensajeError = "Completa todos los campos"
+                    } else {
+                        scope.launch {
+                            try {
+                                SupabaseClient.client.auth.signInWith(Email) {
+                                    email = emailLimpio
+                                    password = passLimpia
+                                }
+                            } catch (e: Exception) {
+                                val msg = e.message ?: e.localizedMessage ?: "Error desconocido"
+                                mensajeError = when {
+                                    msg.contains("Invalid login credentials", ignoreCase = true) ->
+                                        "Correo o contraseña incorrectos"
+                                    msg.contains("Email not confirmed", ignoreCase = true) ->
+                                        "Confirma tu correo antes de entrar"
+                                    msg.contains("rate limit", ignoreCase = true) ->
+                                        "Demasiados intentos, espera un momento"
+                                    else -> "Error: $msg"
+                                }
+                            }
                         }
                     }
                 },

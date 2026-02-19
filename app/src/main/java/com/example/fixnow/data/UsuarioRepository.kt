@@ -1,36 +1,28 @@
 package com.example.fixnow.data
 
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Modelo de datos para la tabla 'usuarios' en Supabase.
- * El uso de @Serializable permite que el SDK de Supabase convierta
- * automáticamente este objeto a JSON para la base de datos.
- */
 @Serializable
 data class UsuarioPerfil(
-    val uid: String,
+    val id: String,
     val email: String,
-    val nombre: String
+    val nombre: String,
+    @SerialName("fecha_registro")
+    val fechaRegistro: Long = System.currentTimeMillis()
 )
 
 object UsuarioRepository {
-    // Referencia al cliente que creaste en SupabaseClient.kt
     private val client = SupabaseClient.client
 
-    /**
-     * Guarda la información del usuario en la tabla de PostgreSQL.
-     * Al ser una función 'suspend', debe ser llamada dentro de un CoroutineScope.
-     */
     suspend fun guardarUsuario(uid: String, email: String, nombre: String) {
         val perfil = UsuarioPerfil(
-            uid = uid,
+            id = uid,
             email = email,
-            nombre = nombre
+            nombre = nombre,
+            fechaRegistro = System.currentTimeMillis()
         )
-
-        // Realiza la inserción en la tabla 'usuarios'
-        client.postgrest["usuarios"].insert(perfil)
+        client.postgrest["Usuarios"].insert(perfil)
     }
 }

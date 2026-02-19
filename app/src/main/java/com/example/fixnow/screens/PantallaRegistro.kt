@@ -31,8 +31,9 @@ fun PantallaRegistro(navController: NavController) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var mensajeError by remember { mutableStateOf("") }
+    var mensajeExito by remember { mutableStateOf("") }
+    var cargando by remember { mutableStateOf(false) }
 
-    // Scope para manejar las funciones suspendidas de Supabase
     val scope = rememberCoroutineScope()
 
     Box(
@@ -68,68 +69,119 @@ fun PantallaRegistro(navController: NavController) {
 
             // Campo Contraseña
             Text("Contraseña", color = Color.White, fontSize = 16.sp, modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, bottom = 4.dp))
-            CampoTextoPersonalizado(value = password, onValueChange = { password = it }, placeholder = "******", esPassword = true)
+            CampoTextoPersonalizado(value = password, onValueChange = { password = it }, placeholder = "Mínimo 8 caracteres", esPassword = true)
+
+            // Hint de requisitos
+            Text(
+                "Mínimo 8 caracteres, una letra y un número",
+                color = Color.White.copy(alpha = 0.75f),
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(start = 12.dp, top = 4.dp)
+            )
+
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
                 onClick = {
-                    // Extraemos los valores a variables locales para evitar conflictos con 'this' en el bloque de Supabase
                     val emailLimpio = email.trim()
                     val passwordLimpio = password
-                    val nombreRegistro = nombre
+                    val nombreRegistro = nombre.trim()
 
-                    if (nombreRegistro.isBlank() || emailLimpio.isBlank() || passwordLimpio.isBlank()) {
-                        mensajeError = "Completa todos los campos"
-                        return@Button
-                    }
+                    when {
+                        nombreRegistro.isBlank() || emailLimpio.isBlank() || passwordLimpio.isBlank() -> {
+                            mensajeError = "Completa todos los campos"
+                        }
+                        passwordLimpio.length < 8 -> {
+                            mensajeError = "La contraseña debe tener al menos 8 caracteres"
+                        }
+                        !passwordLimpio.any { it.isDigit() } -> {
+                            mensajeError = "La contraseña debe contener al menos un número"
+                        }
+                        !passwordLimpio.any { it.isLetter() } -> {
+                            mensajeError = "La contraseña debe contener al menos una letra"
+                        }
+                        else -> {
+                            mensajeError = ""
+                            mensajeExito = ""
+                            cargando = true
 
-                    scope.launch {
-                        try {
-                            // 1. Registro en Supabase Auth
-                            SupabaseClient.client.auth.signUpWith(Email) {
-                                this.email = emailLimpio
-                                this.password = passwordLimpio
-                            }
+                            scope.launch {
+                                try {
+                                    SupabaseClient.client.auth.signUpWith(Email) {
+                                        this.email = emailLimpio
+                                        this.password = passwordLimpio
+                                    }
 
-                            // 2. Obtener el UID generado
-                            val uid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                                    val uid = SupabaseClient.client.auth.currentUserOrNull()?.id
 
-                            if (uid != null) {
-                                // 3. Guardar en la tabla 'usuarios' de tu base de datos
-                                UsuarioRepository.guardarUsuario(
-                                    uid = uid,
-                                    email = emailLimpio,
-                                    nombre = nombreRegistro
-                                )
+                                    if (uid != null) {
+                                        try {
+                                            UsuarioRepository.guardarUsuario(
+                                                uid = uid,
+                                                email = emailLimpio,
+                                                nombre = nombreRegistro
+                                            )
+                                        } catch (dbError: Exception) {
+                                            // Auth exitoso pero fallo DB, igual navega
+                                        }
+                                    } else {
+                                        mensajeExito = "¡Revisa tu correo para confirmar tu cuenta!"
+                                        cargando = false
+                                    }
 
-                                navController.navigate("inicio") {
-                                    popUpTo("login") { inclusive = true }
+                                } catch (e: Exception) {
+                                    val msg = e.message ?: e.localizedMessage ?: ""
+                                    mensajeError = when {
+                                        msg.contains("already registered", ignoreCase = true) ||
+                                                msg.contains("User already registered", ignoreCase = true) ->
+                                            "Este correo ya está registrado"
+                                        msg.contains("rate limit", ignoreCase = true) ||
+                                                msg.contains("seconds", ignoreCase = true) ->
+                                            "Espera un momento antes de intentarlo de nuevo"
+                                        msg.contains("invalid email", ignoreCase = true) ->
+                                            "El correo no es válido"
+                                        else -> "Error: $msg"
+                                    }
+                                    cargando = false
                                 }
                             }
-                        } catch (e: Exception) {
-                            mensajeError = e.localizedMessage ?: "Error al registrar"
                         }
                     }
                 },
+                enabled = !cargando,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCC8E00)),
                 shape = RoundedCornerShape(50),
                 modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)
             ) {
-                Text("Crear Cuenta")
+                if (cargando) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Crear Cuenta")
+                }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             if (mensajeError.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(text = mensajeError, color = Color.Red, fontSize = 14.sp)
+            }
+            if (mensajeExito.isNotEmpty()) {
+                Text(text = mensajeExito, color = Color(0xFF2E7D32), fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Row {
                 Text("¿Ya tienes cuenta? ", fontSize = 14.sp, color = Color.Black)
-                Text("Inicia sesión", fontSize = 14.sp, color = Color(0xFF5E35B1), fontWeight = FontWeight.Bold, modifier = Modifier.clickable {
-                    navController.popBackStack()
-                })
+                Text(
+                    "Inicia sesión",
+                    fontSize = 14.sp,
+                    color = Color(0xFF5E35B1),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { navController.popBackStack() }
+                )
             }
         }
     }
