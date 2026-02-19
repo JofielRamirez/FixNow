@@ -9,7 +9,11 @@ object SupabaseClient {
         supabaseUrl = "https://nodxqqtyrxvgeyvezpps.supabase.co",
         supabaseKey = "sb_publishable_Gd5B7AKCg4OcVGepIDrhUg_K1BaV3xP"
     ) {
-        install(Auth)
+        install(Auth) {
+            autoSaveToStorage = true
+            autoLoadFromStorage = true
+            alwaysAutoRefresh = true
+        }
         install(Postgrest)
     }
 }

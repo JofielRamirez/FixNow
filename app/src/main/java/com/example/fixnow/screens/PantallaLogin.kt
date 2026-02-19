@@ -27,10 +27,6 @@ import com.example.fixnow.data.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
-
-
-
-
 import kotlinx.coroutines.launch
 
 @Composable
@@ -54,7 +50,6 @@ fun PantallaLogin(navController: NavController) {
                 )
             )
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -62,7 +57,6 @@ fun PantallaLogin(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
             Icon(
                 imageVector = Icons.Default.Build,
                 contentDescription = "Logo",
@@ -87,9 +81,7 @@ fun PantallaLogin(navController: NavController) {
                 color = Color.White,
                 fontSize = 18.sp,
                 fontStyle = FontStyle.Italic,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(start = 8.dp, bottom = 4.dp)
+                modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, bottom = 4.dp)
             )
 
             CampoTextoPersonalizado(
@@ -105,9 +97,7 @@ fun PantallaLogin(navController: NavController) {
                 color = Color.White,
                 fontSize = 18.sp,
                 fontStyle = FontStyle.Italic,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .padding(start = 8.dp, bottom = 4.dp)
+                modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, bottom = 4.dp)
             )
 
             CampoTextoPersonalizado(
@@ -121,9 +111,7 @@ fun PantallaLogin(navController: NavController) {
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 4.dp)
+                modifier = Modifier.fillMaxWidth().padding(start = 4.dp)
             ) {
                 Checkbox(
                     checked = recordarUsuario,
@@ -139,6 +127,7 @@ fun PantallaLogin(navController: NavController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Botón login con Email
             Button(
                 onClick = {
                     val emailLimpio = usuario.trim()
@@ -150,17 +139,13 @@ fun PantallaLogin(navController: NavController) {
                         mensajeError = ""
                         scope.launch {
                             try {
-                                // Limpiar sesión previa por si acaso
-                                try { SupabaseClient.client.auth.signOut() } catch (_: Exception) {}
-
                                 SupabaseClient.client.auth.signInWith(Email) {
                                     email = emailLimpio
                                     password = passLimpia
                                 }
+                                // AppNavigation detecta la sesión automáticamente
                             } catch (e: Exception) {
-                                mensajeError = e.message
-                                    ?: e.localizedMessage
-                                            ?: "Error desconocido"
+                                mensajeError = e.message ?: e.localizedMessage ?: "Error desconocido"
                             }
                         }
                     }
@@ -171,35 +156,20 @@ fun PantallaLogin(navController: NavController) {
             ) {
                 Text("Ingresar")
             }
+
             Spacer(modifier = Modifier.height(20.dp))
 
-
+            // Botón Google — ahora sí usa Google
             OutlinedButton(
                 onClick = {
-                    val emailLimpio = usuario.trim()
-                    val passLimpia = password
-
-                    if (emailLimpio.isBlank() || passLimpia.isBlank()) {
-                        mensajeError = "Completa todos los campos"
-                    } else {
-                        scope.launch {
-                            try {
-                                SupabaseClient.client.auth.signInWith(Email) {
-                                    email = emailLimpio
-                                    password = passLimpia
-                                }
-                            } catch (e: Exception) {
-                                val msg = e.message ?: e.localizedMessage ?: "Error desconocido"
-                                mensajeError = when {
-                                    msg.contains("Invalid login credentials", ignoreCase = true) ->
-                                        "Correo o contraseña incorrectos"
-                                    msg.contains("Email not confirmed", ignoreCase = true) ->
-                                        "Confirma tu correo antes de entrar"
-                                    msg.contains("rate limit", ignoreCase = true) ->
-                                        "Demasiados intentos, espera un momento"
-                                    else -> "Error: $msg"
-                                }
-                            }
+                    scope.launch {
+                        try {
+                            SupabaseClient.client.auth.signInWith(
+                                provider = Google,
+                                redirectUrl = "fixnow://login"
+                            )
+                        } catch (e: Exception) {
+                            mensajeError = "Error al conectar con Google: ${e.message}"
                         }
                     }
                 },
@@ -208,28 +178,22 @@ fun PantallaLogin(navController: NavController) {
             ) {
                 Text("Continuar con Google")
             }
+
             if (mensajeError.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = mensajeError,
-                    color = Color.Red,
-                    fontSize = 14.sp
-                )
+                Text(text = mensajeError, color = Color.Red, fontSize = 14.sp)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Row {
                 Text("¿No tienes cuenta? ", fontSize = 14.sp, color = Color.Black)
-
                 Text(
                     "Crear una cuenta",
                     fontSize = 14.sp,
                     color = Color(0xFF5E35B1),
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable {
-                        navController.navigate("registro")
-                    }
+                    modifier = Modifier.clickable { navController.navigate("registro") }
                 )
             }
         }
