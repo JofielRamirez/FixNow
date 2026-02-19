@@ -1,42 +1,64 @@
 package com.example.fixnow.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.fixnow.R
-import com.example.fixnow.data.SupabaseClient
-import com.example.fixnow.model.Categoria
+import coil.compose.AsyncImage
 import com.example.fixnow.OrangePrimary
 import com.example.fixnow.OrangeLight
-import com.example.fixnow.BackgroundWhite
-import com.example.fixnow.TextGray
+import com.example.fixnow.data.SupabaseClient
+import androidx.compose.material.icons.filled.Place
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.postgrest
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.runtime.getValue
+import com.example.fixnow.data.UsuarioRepository
+import kotlinx.coroutines.launch
+import com.example.fixnow.data.UsuarioPerfil
+
 
 @Composable
 fun PantallaInicio(navController: NavController) {
+    val scope = rememberCoroutineScope()
     val session = SupabaseClient.client.auth.currentSessionOrNull()
     val user = session?.user
+
     val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()?.trim('"')
-        ?: user?.email?.substringBefore("@")
-        ?: "Usuario"
+        ?: user?.email?.substringBefore("@") ?: "Usuario"
+
+    var fotosTrabajos by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        fotosTrabajos = UsuarioRepository.obtenerFotosDeTrabajos()
+    }
 
     Scaffold(
         bottomBar = { BottomNavBar(navController) }
@@ -44,79 +66,58 @@ fun PantallaInicio(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BackgroundWhite)
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .background(Color(0xFFFDFDFD))
         ) {
-            Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .background(brush = Brush.verticalGradient(colors = listOf(OrangePrimary, OrangeLight)))
+            HeaderAmarillo()
+
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "¿Qué servicio buscas hoy, $nombreUsuario?",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Carrusel de fotos
+                LazyRow(
+                    modifier = Modifier.height(200.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    if (fotosTrabajos.isEmpty()) {
+                        items(3) { CardFotoSoloVista(url = null) }
+                    } else {
+                        items(fotosTrabajos) { url -> CardFotoSoloVista(url = url) }
+                    }
+                }
+
+                // ... debajo del carrusel de fotos (LazyRow) ...
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Text(
-                        "Sin ubicación",
-                        color = Color.White,
-                        modifier = Modifier.padding(16.dp),
-                        fontSize = 14.sp
-                    )
-                    Text(
-                        text = "Hola, $nombreUsuario ",
-                        color = Color.White,
+                        text = "Socios destacados",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 16.dp, top = 40.dp)
+                        color = Color(0xFF333333)
                     )
-                }
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(25.dp),
-                    elevation = CardDefaults.cardElevation(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
-                    ) {
-                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = TextGray)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ingresa tu ubicación", color = TextGray)
-                    }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
-                "¿Qué servicio buscas?",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-            val categorias = listOf(
-                Categoria("Plomería", Icons.Default.Build),
-                Categoria("Cerrajería", Icons.Default.Lock),
-                Categoria("Electricidad", Icons.Default.Star),
-                Categoria("Mecánica", Icons.Default.Settings),
-                Categoria("Carpintería", Icons.Default.Home),
-                Categoria("Limpieza", Icons.Default.Delete)
-            )
+                    // Aquí puedes llamar a la función que creamos arriba
+                    CardSocioDestacado(
+                        nombre = "Carpintería El Super",
+                        resenas = 22,
+                        tiempo = "A 12 minutos de ti"
+                    )
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(categorias) { cat ->
-                    CardCategoria(cat) {
-                        navController.navigate("servicios/${cat.nombre}")
-                    }
+                    // Puedes agregar más si lo deseas
+                    CardSocioDestacado(
+                        nombre = "Plomería Tecate",
+                        resenas = 15,
+                        tiempo = "A 5 minutos de ti"
+                    )
                 }
             }
         }
@@ -124,81 +125,318 @@ fun PantallaInicio(navController: NavController) {
 }
 
 @Composable
-fun CardCategoria(cat: Categoria, onClick: () -> Unit) {
+fun CardFotoSoloVista(url: String?) {
     Card(
+        modifier = Modifier.size(width = 150.dp, height = 200.dp),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        modifier = Modifier.size(100.dp).clickable { onClick() }
+        elevation = CardDefaults.cardElevation(4.dp)
+
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(cat.icon, contentDescription = null, modifier = Modifier.size(32.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(cat.nombre, fontSize = 12.sp, color = TextGray)
+        if (url != null) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(Modifier.fillMaxSize().background(Color.LightGray), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Place, null, tint = Color.Gray)
+            }
         }
     }
 }
+
+@Composable
+fun HeaderAmarillo() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color(0xFFFBC02D), Color(0xFFFFF176))
+                )
+            )
+            .padding(20.dp)
+    ) {
+        Column {
+            Text(
+                text = "Calle Alcatraz #1515, Tecate",
+                color = Color.White,
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Buscador
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(25.dp),
+                color = Color.White,
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Ingresa tu ubicacion", color = Color.LightGray)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SeccionSubirFotos() {
+    val fotosSeleccionadas = remember { mutableStateListOf<Uri>() }
+    val pickMedia = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> if (uri != null) fotosSeleccionadas.add(uri) }
+
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        Text(
+            text = "¿Que servicio buscas el dia de hoy, Jofiel?",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF333333)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyRow(
+            modifier = Modifier.height(210.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                CardFotoTrabajo(
+                    esBotonAgregar = true,
+                    onClick = {
+                        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                )
+            }
+            items(fotosSeleccionadas) { uri ->
+                CardFotoTrabajo(uri = uri)
+            }
+            if (fotosSeleccionadas.isEmpty()) {
+                items(2) { CardFotoTrabajo(esDecorativo = true) }
+            }
+        }
+    }
+}
+
+@Composable
+fun CardFotoTrabajo(
+    uri: Uri? = null,
+    esBotonAgregar: Boolean = false,
+    esDecorativo: Boolean = false,
+    onClick: () -> Unit = {}
+) {
+    Card(
+        modifier = Modifier
+            .size(width = 120.dp, height = 160.dp)
+            .clickable(enabled = esBotonAgregar) { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(if (uri != null) Color.Transparent else Color(0xFFD1D1D1)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (uri != null) {
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.AddCircle,
+                            contentDescription = null,
+                            tint = if (esBotonAgregar) Color.White else Color(0xFFE0E0E0),
+                            modifier = Modifier.size(32.dp)
+                        )
+                        if (esBotonAgregar) {
+                            Text("Tomar Foto", color = Color.White, fontSize = 10.sp)
+                        }
+                    }
+                }
+            }
+            Text(
+                "Añade fotos de tu trabajo",
+                fontSize = 10.sp,
+                modifier = Modifier.padding(8.dp),
+                lineHeight = 12.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun SeccionSociosDinamica(
+    listaSocios: List<UsuarioPerfil>,
+    estaCargando: Boolean,
+    categoria: String
+) {
+    Column(modifier = Modifier.padding(20.dp)) {
+        Text(
+            text = if (categoria.isEmpty()) "Socios destacados" else "Especialistas en $categoria",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF333333)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (estaCargando) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = OrangePrimary)
+            }
+        } else if (categoria.isNotEmpty() && listaSocios.isEmpty()) {
+            // MENSAJE DE NO ENCONTRADO
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFDEEE9))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("No se encontraron socios en esta categoría.", color = Color.Gray, fontSize = 14.sp)
+                }
+            }
+        } else {
+            // Usamos Column porque el scroll ya lo tiene el padre (PantallaInicio)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                listaSocios.forEach { socio ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(socio.nombre, fontWeight = FontWeight.Bold)
+                            Text(socio.tipo_servicio ?: "Servicio General", fontSize = 12.sp, color = OrangePrimary)
+                            Text("Disponible ahora", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun BottomNavBar(navController: NavController) {
-    val amarillo = Color(0xFFFFB300)
-    val gris = Color(0xFF9E9E9E)
-    val navBackStackEntry = navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry.value?.destination?.route?.substringBefore("/") ?: "inicio"
+    // 1. Detectamos en qué pantalla estamos actualmente
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-    NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 8.dp
-    ) {
+    NavigationBar(containerColor = Color.White) {
+        // --- BOTÓN INICIO ---
         NavigationBarItem(
-            icon = {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_inicio),
-                    contentDescription = "Inicio",
-                    modifier = Modifier.size(24.dp),
-                    tint = if (currentRoute == "inicio") amarillo else gris
-                )
-            },
-            label = { Text("Inicio", color = if (currentRoute == "inicio") amarillo else gris, fontSize = 12.sp) },
+            icon = { Icon(Icons.Default.Home, null) },
+            label = { Text("Inicio") },
+            // Ahora se marca solo si estamos en inicio
             selected = currentRoute == "inicio",
             onClick = {
-                navController.navigate("inicio") {
-                    popUpTo("inicio") { inclusive = true }
+                // Navega a inicio solo si no estamos ya ahí
+                if (currentRoute != "inicio") {
+                    navController.navigate("inicio") {
+                        // Limpia el historial para que no se trabe la app
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
-            },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+            }
         )
+
+        // --- BOTÓN SERVICIOS ---
         NavigationBarItem(
-            icon = {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_servicios),
-                    contentDescription = "Servicios",
-                    modifier = Modifier.size(24.dp),
-                    tint = if (currentRoute == "servicios_tab") amarillo else gris
-                )
-            },
-            label = { Text("Servicios", color = if (currentRoute == "servicios_tab") amarillo else gris, fontSize = 12.sp) },
-            selected = currentRoute == "servicios_tab",
-            onClick = { navController.navigate("servicios_tab") },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+            icon = { Icon(Icons.Default.Search, null) },
+            label = { Text("Servicios") },
+            selected = currentRoute == "servicios",
+            onClick = {
+                if (currentRoute != "servicios") {
+                    navController.navigate("servicios") {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            }
         )
+
+        // --- BOTÓN PERFIL ---
         NavigationBarItem(
-            icon = {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_perfil),
-                    contentDescription = "Perfil",
-                    modifier = Modifier.size(24.dp),
-                    tint = if (currentRoute == "perfil") amarillo else gris
-                )
-            },
-            label = { Text("Perfil", color = if (currentRoute == "perfil") amarillo else gris, fontSize = 12.sp) },
+            icon = { Icon(Icons.Default.Person, null) },
+            label = { Text("Perfil") },
             selected = currentRoute == "perfil",
-            onClick = { navController.navigate("perfil") },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+            onClick = {
+                if (currentRoute != "perfil") {
+                    navController.navigate("perfil") {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            }
         )
     }
 }
+
+@Composable
+fun CardSocioDestacado(
+    nombre: String,
+    resenas: Int,
+    tiempo: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = nombre,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color(0xFF333333)
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ThumbUp,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = " ($resenas reseñas)",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
+            Text(
+                text = tiempo,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
+    }
+}
+
