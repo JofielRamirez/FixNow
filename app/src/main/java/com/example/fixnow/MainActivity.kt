@@ -44,13 +44,19 @@ fun AppNavigation() {
     LaunchedEffect(sessionStatus) {
         when (sessionStatus) {
             is SessionStatus.Authenticated -> {
-                navController.navigate("inicio") {
-                    popUpTo(0) { inclusive = true }
+                // Solo navega si no estamos ya en una pantalla de la app
+                if (navController.currentDestination?.route == "login" ||
+                    navController.currentDestination?.route == "registro") {
+                    navController.navigate("inicio") {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             }
             is SessionStatus.NotAuthenticated -> {
-                navController.navigate("login") {
-                    popUpTo(0) { inclusive = true }
+                if (navController.currentDestination?.route != "login") {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             }
             else -> Unit
@@ -64,7 +70,7 @@ fun AppNavigation() {
         composable("login") { PantallaLogin(navController) }
         composable("registro") { PantallaRegistro(navController) }
         composable("inicio") { PantallaInicio(navController) }
-        composable("servicios_tab") { PantallaServicios(navController) }
+        composable("servicios") { PantallaServicios(navController) }
         composable("perfil") { PantallaPerfil(navController) }
         composable("servicios/{categoria}") { backStackEntry ->
             val categoria = backStackEntry.arguments?.getString("categoria") ?: "Servicio"

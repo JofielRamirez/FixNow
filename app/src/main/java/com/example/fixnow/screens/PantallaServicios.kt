@@ -1,16 +1,20 @@
 package com.example.fixnow.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn // Agregado para la lista de socios
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items // Agregado para el LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -24,12 +28,18 @@ import com.example.fixnow.OrangePrimary
 import com.example.fixnow.OrangeLight
 import com.example.fixnow.BackgroundWhite
 import com.example.fixnow.TextGray
-import com.example.fixnow.model.Categoria
+import com.example.fixnow.data.UsuarioPerfil // Importación directa del modelo
+import com.example.fixnow.data.UsuarioRepository // Importación del repositorio
+import kotlinx.coroutines.launch
 
 data class CategoriaExtra(val nombre: String, val icon: ImageVector, val descripcion: String)
 
 @Composable
 fun PantallaServicios(navController: NavController) {
+    val scope = rememberCoroutineScope()
+    var categoriaSeleccionada by remember { mutableStateOf<String?>(null) }
+    var listaSocios by remember { mutableStateOf<List<UsuarioPerfil>>(emptyList()) }
+    var cargando by remember { mutableStateOf(false) }
 
     val categorias = listOf(
         CategoriaExtra("Plomería", Icons.Default.Build, "Tuberías y más"),
@@ -52,34 +62,32 @@ fun PantallaServicios(navController: NavController) {
                 .background(BackgroundWhite)
                 .padding(padding)
         ) {
-            // Header
+            // Header Dinámico
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
                     .background(brush = Brush.verticalGradient(colors = listOf(OrangePrimary, OrangeLight)))
             ) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(20.dp)
+                Row(
+                    modifier = Modifier.align(Alignment.BottomStart).padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Servicios",
-                        color = Color.White,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "¿En qué te podemos ayudar?",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 13.sp
-                    )
+                    if (categoriaSeleccionada != null) {
+                        IconButton(onClick = { categoriaSeleccionada = null }) {
+                            Icon(Icons.Default.ArrowBack, null, tint = Color.White)
+                        }
+                    }
+                    Column {
+                        Text(categoriaSeleccionada ?: "Servicios", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                        Text(if (categoriaSeleccionada == null) "¿En qué te podemos ayudar?" else "Socios disponibles", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+                    }
                 }
             }
 
-            // Buscador
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Buscador (Código original restaurado)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -101,25 +109,58 @@ fun PantallaServicios(navController: NavController) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Text(
-                "Servicios básicos",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF333333),
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
+            if (categoriaSeleccionada == null) {
+                Text(
+                    "Servicios básicos",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF333333),
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(categorias) { cat ->
-                    CardServicio(cat) {
-                        navController.navigate("servicios/${cat.nombre}")
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(categorias) { cat ->
+                        CardServicio(cat) {
+                            categoriaSeleccionada = cat.nombre
+                            Log.d("FILTRO_SOCIOS", "Buscando a: ${cat.nombre}") // Agrega esta línea
+                            scope.launch {
+                                cargando = true
+                                listaSocios = UsuarioRepository.obtenerSociosPorCategoria(cat.nombre)
+                                cargando = false
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (cargando) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = OrangePrimary)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (listaSocios.isEmpty()) {
+                            item {
+                                Text(
+                                    "No se encontraron socios en esta categoría.",
+                                    modifier = Modifier.padding(16.dp),
+                                    color = Color.Gray
+                                )
+                            }
+                        } else {
+                            items(listaSocios) { socio ->
+                                CardSocioSimple(socio)
+                            }
+                        }
                     }
                 }
             }
@@ -167,6 +208,27 @@ fun CardServicio(cat: CategoriaExtra, onClick: () -> Unit) {
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFF333333)
             )
+        }
+    }
+}
+
+@Composable
+fun CardSocioSimple(socio: com.example.fixnow.data.UsuarioPerfil) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(Color(0xFFFFEEE0), CircleShape), contentAlignment = Alignment.Center) {
+                Text(socio.nombre.take(1).uppercase(), fontWeight = FontWeight.Bold, color = OrangePrimary)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(socio.nombre, fontWeight = FontWeight.Bold)
+                Text(socio.tipo_servicio ?: "", fontSize = 12.sp, color = Color.Gray)
+            }
         }
     }
 }

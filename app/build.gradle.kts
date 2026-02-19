@@ -64,15 +64,22 @@ dependencies {
     // ---------- NAVIGATION ----------
     implementation("androidx.navigation:navigation-compose:2.8.6")
 
-    // ---------- SUPABASE v3 ----------
-    implementation(libs.supabase.auth)
-    implementation(libs.supabase.postgrest)
+    // ---------- SUPABASE v3 (Versiones unificadas) ----------
+    val supabase_version = "3.0.3"
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:$supabase_version")
+    implementation("io.github.jan-tennert.supabase:auth-kt:$supabase_version")
+    implementation("io.github.jan-tennert.supabase:storage-kt:$supabase_version")
 
-    // ---------- KTOR 3 (OBLIGATORIO con Supabase 3) ----------
-    implementation("io.ktor:ktor-client-core:3.0.1")
-    implementation("io.ktor:ktor-client-android:3.0.1")
-    implementation("io.ktor:ktor-client-content-negotiation:3.0.1")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
+    // ---------- KTOR 3 (Versiones unificadas) ----------
+    val ktor_version = "3.0.3"
+    implementation("io.ktor:ktor-client-core:$ktor_version")
+    implementation("io.ktor:ktor-client-android:$ktor_version")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
+    implementation("io.ktor:ktor-utils:$ktor_version") // Muy importante para los bytes de la foto
+
+    // ---------- IMÁGENES ----------
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // ---------- SERIALIZATION ----------
     implementation(libs.kotlinx.serialization.json)
