@@ -1,5 +1,6 @@
 package com.example.fixnow.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,7 +26,6 @@ import androidx.navigation.NavController
 import com.example.fixnow.OrangePrimary
 import com.example.fixnow.data.SupabaseClient
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.launch
 
@@ -34,8 +34,8 @@ fun PantallaLogin(navController: NavController) {
 
     var usuario by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var recordarUsuario by rememberSaveable { mutableStateOf(false) }
     var mensajeError by remember { mutableStateOf("") }
+    var cargando by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
@@ -103,88 +103,69 @@ fun PantallaLogin(navController: NavController) {
             CampoTextoPersonalizado(
                 value = password,
                 onValueChange = { password = it },
-                placeholder = "",
+                placeholder = "********",
                 esPassword = true
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp)
-            ) {
-                Checkbox(
-                    checked = recordarUsuario,
-                    onCheckedChange = { recordarUsuario = it }
-                )
-                Text(
-                    text = "Recordar mi sesión",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontStyle = FontStyle.Italic
-                )
-            }
-
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Botón login con Email
-            Button(
-                onClick = {
-                    val emailLimpio = usuario.trim()
-                    val passLimpia = password
+            if (cargando) {
+                CircularProgressIndicator(color = OrangePrimary)
+            } else {
+                Button(
+                    onClick = {
+                        val emailLimpio = usuario.trim().lowercase()
+                        val passLimpia = password.trim()
 
-                    if (emailLimpio.isBlank() || passLimpia.isBlank()) {
-                        mensajeError = "Completa todos los campos"
-                    } else {
-                        mensajeError = ""
-                        scope.launch {
-                            try {
-                                SupabaseClient.client.auth.signInWith(Email) {
-                                    email = emailLimpio
-                                    password = passLimpia
+                        if (emailLimpio.isBlank() || passLimpia.isBlank()) {
+                            mensajeError = "Completa todos los campos"
+                        } else {
+                            mensajeError = ""
+                            cargando = true
+                            scope.launch {
+                                try {
+                                    SupabaseClient.client.auth.signInWith(Email) {
+                                        this.email = emailLimpio
+                                        this.password = passLimpia
+                                    }
+                                    Log.d("LOGIN", "Sesión iniciada con éxito")
+                                    // La navegación se maneja en el Main/AppNavigation
+                                } catch (e: Exception) {
+                                    Log.e("LOGIN_ERROR", "Error: ${e.message}")
+                                    val errorMsg = e.message ?: ""
+                                    mensajeError = when {
+                                        errorMsg.contains("Email not confirmed", ignoreCase = true) -> 
+                                            "Debes confirmar tu correo electrónico"
+                                        errorMsg.contains("Invalid login credentials", ignoreCase = true) -> 
+                                            "Correo o contraseña incorrectos"
+                                        else -> "Error: ${e.localizedMessage}"
+                                    }
+                                } finally {
+                                    cargando = false
                                 }
-                                // AppNavigation detecta la sesión automáticamente
-                            } catch (e: Exception) {
-                                mensajeError = e.message ?: e.localizedMessage ?: "Error desconocido"
                             }
                         }
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCC8E00)),
-                shape = RoundedCornerShape(50),
-                modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)
-            ) {
-                Text("Ingresar")
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Botón Google — ahora sí usa Google
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        try {
-                            SupabaseClient.client.auth.signInWith(
-                                provider = Google,
-                                redirectUrl = "fixnow://login"
-                            )
-                        } catch (e: Exception) {
-                            mensajeError = "Error al conectar con Google: ${e.message}"
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(0.6f).height(50.dp),
-                shape = RoundedCornerShape(50)
-            ) {
-                Text("Continuar con Google")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCC8E00)),
+                    shape = RoundedCornerShape(50),
+                    modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)
+                ) {
+                    Text("Ingresar")
+                }
             }
 
             if (mensajeError.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = mensajeError, color = Color.Red, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = mensajeError,
+                    color = Color.Red,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
             Row {
                 Text("¿No tienes cuenta? ", fontSize = 14.sp, color = Color.Black)

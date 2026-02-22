@@ -9,7 +9,6 @@ import androidx.compose.material.icons.filled.ThumbUp
 object UsuarioRepository {
     private val client = SupabaseClient.client
 
-    // Ajustado a tu nuevo modelo que solo pide ID y Nombre
     suspend fun guardarUsuario(uid: String, email: String, nombre: String) {
         val perfil = UsuarioPerfil(
             id = uid,
@@ -21,12 +20,7 @@ object UsuarioRepository {
     }
 
     suspend fun convertirseEnPrestador(uid: String, tipo: String) {
-        // Limpieza total: PostgreSQL no acepta el ID con comillas
         val uidLimpio = uid.replace("\"", "").trim()
-
-        // Log para que revises en el Logcat de Android Studio si el ID es correcto
-        Log.d("DEBUG_SUPABASE", "ID Limpio enviado: $uidLimpio")
-
         client.postgrest["Usuarios"].update(
             {
                 set("es_prestador", true)
@@ -34,6 +28,24 @@ object UsuarioRepository {
             }
         ) {
             filter { eq("id", uidLimpio) }
+        }
+    }
+
+    suspend fun obtenerSociosPorCategoria(categoria: String): List<UsuarioPerfil> {
+        return try {
+            // Consulta simplificada para evitar errores de filtrado estricto
+            val respuesta = client.postgrest["Usuarios"].select {
+                filter {
+                    eq("es_prestador", true)
+                    ilike("tipo_servicio", categoria)
+                }
+            }.decodeList<UsuarioPerfil>()
+
+            Log.d("SOCIOS_DB", "Categoría: $categoria | Encontrados: ${respuesta.size}")
+            respuesta
+        } catch (e: Exception) {
+            Log.e("REPO_ERROR", "Error al obtener socios: ${e.message}")
+            emptyList()
         }
     }
 
@@ -57,26 +69,6 @@ object UsuarioRepository {
         } catch (e: Exception) {
             Log.e("REPO", "Error subiendo foto: ${e.message}")
             throw e
-        }
-    }
-
-    suspend fun obtenerSociosPorCategoria(categoria: String): List<UsuarioPerfil> {
-        return try {
-            val respuesta = client.postgrest["Usuarios"].select {
-                filter {
-                    // ILIKE ignora si es "electricidad" o "Electricidad"
-                    ilike("tipo_servicio", categoria)
-                    eq("es_prestador", true)
-                }
-            }.decodeList<UsuarioPerfil>()
-
-            // LOG DE CONTROL - Revisa esto en tu Logcat
-            Log.d("SOCIOS_DB", "Busqué: $categoria | Encontrados: ${respuesta.size}")
-
-            respuesta
-        } catch (e: Exception) {
-            Log.e("REPO_ERROR", "Error: ${e.message}")
-            emptyList()
         }
     }
 }
