@@ -69,7 +69,7 @@ fun PantallaRegistro(navController: NavController) {
 
             // Campo Contraseña
             Text("Contraseña", color = Color.White, fontSize = 16.sp, modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, bottom = 4.dp))
-            CampoTextoPersonalizado(value = password, onValueChange = { password = it }, placeholder = "Mínimo 8 caracteres", esPassword = true)
+            CampoTextoPersonalizado(value = password, onValueChange = { password = it }, placeholder = "Mínimo 8 caracteres", esPassword = false)
 
             // Hint de requisitos
             Text(
@@ -85,7 +85,7 @@ fun PantallaRegistro(navController: NavController) {
 
             Button(
                 onClick = {
-                    val emailLimpio = email.trim()
+                    val emailLimpio = email.trim().lowercase()
                     val passwordLimpio = password
                     val nombreRegistro = nombre.trim()
 

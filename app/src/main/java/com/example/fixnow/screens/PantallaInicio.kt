@@ -92,7 +92,6 @@ fun PantallaInicio(navController: NavController) {
                     }
                 }
 
-                // ... debajo del carrusel de fotos (LazyRow) ...
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -105,14 +104,12 @@ fun PantallaInicio(navController: NavController) {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Aquí puedes llamar a la función que creamos arriba
                     CardSocioDestacado(
                         nombre = "Carpintería El Super",
                         resenas = 22,
                         tiempo = "A 12 minutos de ti"
                     )
 
-                    // Puedes agregar más si lo deseas
                     CardSocioDestacado(
                         nombre = "Plomería Tecate",
                         resenas = 15,
@@ -168,7 +165,6 @@ fun HeaderAmarillo() {
             )
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Buscador
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(25.dp),
@@ -299,7 +295,6 @@ fun SeccionSociosDinamica(
                 CircularProgressIndicator(color = OrangePrimary)
             }
         } else if (categoria.isNotEmpty() && listaSocios.isEmpty()) {
-            // MENSAJE DE NO ENCONTRADO
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFFDEEE9))
@@ -312,7 +307,6 @@ fun SeccionSociosDinamica(
                 }
             }
         } else {
-            // Usamos Column porque el scroll ya lo tiene el padre (PantallaInicio)
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 listaSocios.forEach { socio ->
                     Card(
@@ -322,7 +316,8 @@ fun SeccionSociosDinamica(
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(socio.nombre, fontWeight = FontWeight.Bold)
+                            // CORRECCIÓN AQUÍ: Manejo de nulos para evitar error de compilación
+                            Text(socio.nombre ?: "Socio", fontWeight = FontWeight.Bold)
                             Text(socio.tipo_servicio ?: "Servicio General", fontSize = 12.sp, color = OrangePrimary)
                             Text("Disponible ahora", fontSize = 12.sp, color = Color.Gray)
                         }
@@ -336,22 +331,17 @@ fun SeccionSociosDinamica(
 
 @Composable
 fun BottomNavBar(navController: NavController) {
-    // 1. Detectamos en qué pantalla estamos actualmente
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     NavigationBar(containerColor = Color.White) {
-        // --- BOTÓN INICIO ---
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, null) },
             label = { Text("Inicio") },
-            // Ahora se marca solo si estamos en inicio
             selected = currentRoute == "inicio",
             onClick = {
-                // Navega a inicio solo si no estamos ya ahí
                 if (currentRoute != "inicio") {
                     navController.navigate("inicio") {
-                        // Limpia el historial para que no se trabe la app
                         popUpTo(navController.graph.startDestinationId) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
@@ -360,7 +350,6 @@ fun BottomNavBar(navController: NavController) {
             }
         )
 
-        // --- BOTÓN SERVICIOS ---
         NavigationBarItem(
             icon = { Icon(Icons.Default.Search, null) },
             label = { Text("Servicios") },
@@ -376,7 +365,6 @@ fun BottomNavBar(navController: NavController) {
             }
         )
 
-        // --- BOTÓN PERFIL ---
         NavigationBarItem(
             icon = { Icon(Icons.Default.Person, null) },
             label = { Text("Perfil") },
@@ -439,4 +427,3 @@ fun CardSocioDestacado(
         }
     }
 }
-

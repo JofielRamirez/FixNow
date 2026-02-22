@@ -50,7 +50,7 @@ fun PantallaPerfil(navController: NavController) {
     var mostrarDialogo by remember { mutableStateOf(false) }
     var tipoSeleccionado by remember { mutableStateOf("") }
     var perfil by remember { mutableStateOf<UsuarioPerfil?>(null) }
-    val categorias = listOf("Carpintería", "Cerrajería", "Mecánica", "Plomería", "Electricidad")
+    val categorias = listOf("Carpinteria", "Cerrajeria", "Mecanica", "Plomeria", "Electricidad")
 
     val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()?.trim('"')
         ?: user?.email?.substringBefore("@")

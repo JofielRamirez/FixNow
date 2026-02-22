@@ -4,11 +4,11 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn // Agregado para la lista de socios
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items // Agregado para el LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,11 +28,16 @@ import com.example.fixnow.OrangePrimary
 import com.example.fixnow.OrangeLight
 import com.example.fixnow.BackgroundWhite
 import com.example.fixnow.TextGray
-import com.example.fixnow.data.UsuarioPerfil // Importación directa del modelo
-import com.example.fixnow.data.UsuarioRepository // Importación del repositorio
+import com.example.fixnow.data.UsuarioPerfil
+import com.example.fixnow.data.UsuarioRepository
 import kotlinx.coroutines.launch
 
-data class CategoriaExtra(val nombre: String, val icon: ImageVector, val descripcion: String)
+data class CategoriaExtra(
+    val nombre: String,      // Lo que ve el usuario (con acentos)
+    val idBusqueda: String,  // Lo que se busca en DB (estandarizado sin acentos)
+    val icon: ImageVector,
+    val descripcion: String
+)
 
 @Composable
 fun PantallaServicios(navController: NavController) {
@@ -42,15 +47,15 @@ fun PantallaServicios(navController: NavController) {
     var cargando by remember { mutableStateOf(false) }
 
     val categorias = listOf(
-        CategoriaExtra("Plomería", Icons.Default.Build, "Tuberías y más"),
-        CategoriaExtra("Cerrajería", Icons.Default.Lock, "Llaves y cerraduras"),
-        CategoriaExtra("Electricidad", Icons.Default.Star, "Instalaciones"),
-        CategoriaExtra("Mecánica", Icons.Default.Settings, "Autos y motores"),
-        CategoriaExtra("Carpintería", Icons.Default.Home, "Muebles y madera"),
-        CategoriaExtra("Limpieza", Icons.Default.Delete, "Hogar y oficina"),
-        CategoriaExtra("Pintura", Icons.Default.Create, "Interior y exterior"),
-        CategoriaExtra("Jardinería", Icons.Default.Face, "Jardines y plantas"),
-        CategoriaExtra("Mudanzas", Icons.Default.ShoppingCart, "Carga y traslado")
+        CategoriaExtra("Plomería", "Plomeria", Icons.Default.Build, "Tuberías y más"),
+        CategoriaExtra("Cerrajería", "Cerrajeria", Icons.Default.Lock, "Llaves y cerraduras"),
+        CategoriaExtra("Electricidad", "Electricidad", Icons.Default.Star, "Instalaciones"),
+        CategoriaExtra("Mecánica", "Mecanica", Icons.Default.Settings, "Autos y motores"),
+        CategoriaExtra("Carpintería", "Carpinteria", Icons.Default.Home, "Muebles y madera"),
+        CategoriaExtra("Limpieza", "Limpieza", Icons.Default.Delete, "Hogar y oficina"),
+        CategoriaExtra("Pintura", "Pintura", Icons.Default.Create, "Interior y exterior"),
+        CategoriaExtra("Jardinería", "Jardineria", Icons.Default.Face, "Jardines y plantas"),
+        CategoriaExtra("Mudanzas", "Mudanzas", Icons.Default.ShoppingCart, "Carga y traslado")
     )
 
     Scaffold(
@@ -62,7 +67,6 @@ fun PantallaServicios(navController: NavController) {
                 .background(BackgroundWhite)
                 .padding(padding)
         ) {
-            // Header Dinámico
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -87,29 +91,8 @@ fun PantallaServicios(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Buscador (Código original restaurado)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .height(48.dp),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(4.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
-                ) {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = TextGray, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Buscar servicio...", color = TextGray, fontSize = 14.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
             if (categoriaSeleccionada == null) {
+                // ... (Grid de categorías sin cambios relevantes)
                 Text(
                     "Servicios básicos",
                     fontSize = 16.sp,
@@ -117,9 +100,7 @@ fun PantallaServicios(navController: NavController) {
                     color = Color(0xFF333333),
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
-
                 Spacer(modifier = Modifier.height(12.dp))
-
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -129,10 +110,9 @@ fun PantallaServicios(navController: NavController) {
                     items(categorias) { cat ->
                         CardServicio(cat) {
                             categoriaSeleccionada = cat.nombre
-                            Log.d("FILTRO_SOCIOS", "Buscando a: ${cat.nombre}") // Agrega esta línea
                             scope.launch {
                                 cargando = true
-                                listaSocios = UsuarioRepository.obtenerSociosPorCategoria(cat.nombre)
+                                listaSocios = UsuarioRepository.obtenerSociosPorCategoria(cat.idBusqueda)
                                 cargando = false
                             }
                         }
@@ -145,16 +125,14 @@ fun PantallaServicios(navController: NavController) {
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         if (listaSocios.isEmpty()) {
                             item {
-                                Text(
-                                    "No se encontraron socios en esta categoría.",
-                                    modifier = Modifier.padding(16.dp),
-                                    color = Color.Gray
-                                )
+                                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    Text("No hay socios registrados en ${categoriaSeleccionada?.lowercase()}.", color = Color.Gray)
+                                }
                             }
                         } else {
                             items(listaSocios) { socio ->
@@ -174,46 +152,30 @@ fun CardServicio(cat: CategoriaExtra, onClick: () -> Unit) {
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(3.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        modifier = Modifier
-            .aspectRatio(1f)
-            .clickable { onClick() }
+        modifier = Modifier.aspectRatio(1f).clickable { onClick() }
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
+            modifier = Modifier.fillMaxSize().padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(
-                        color = Color(0xFFFFF3E0),
-                        shape = RoundedCornerShape(12.dp)
-                    ),
+                modifier = Modifier.size(44.dp).background(color = Color(0xFFFFF3E0), shape = RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    cat.icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = OrangePrimary
-                )
+                Icon(cat.icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = OrangePrimary)
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                cat.nombre,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF333333)
-            )
+            Text(cat.nombre, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
         }
     }
 }
 
 @Composable
-fun CardSocioSimple(socio: com.example.fixnow.data.UsuarioPerfil) {
+fun CardSocioSimple(socio: UsuarioPerfil) {
+    val nombreMostrar = socio.nombre ?: "Socio"
+    val inicial = nombreMostrar.take(1).uppercase()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -222,12 +184,12 @@ fun CardSocioSimple(socio: com.example.fixnow.data.UsuarioPerfil) {
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(40.dp).background(Color(0xFFFFEEE0), CircleShape), contentAlignment = Alignment.Center) {
-                Text(socio.nombre.take(1).uppercase(), fontWeight = FontWeight.Bold, color = OrangePrimary)
+                Text(inicial, fontWeight = FontWeight.Bold, color = OrangePrimary)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(socio.nombre, fontWeight = FontWeight.Bold)
-                Text(socio.tipo_servicio ?: "", fontSize = 12.sp, color = Color.Gray)
+                Text(nombreMostrar, fontWeight = FontWeight.Bold, color = Color(0xFF333333))
+                Text(socio.tipo_servicio ?: "Servicio general", fontSize = 12.sp, color = Color.Gray)
             }
         }
     }
