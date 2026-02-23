@@ -92,7 +92,6 @@ fun PantallaServicios(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
 
             if (categoriaSeleccionada == null) {
-                // ... (Grid de categorías sin cambios relevantes)
                 Text(
                     "Servicios básicos",
                     fontSize = 16.sp,
@@ -136,7 +135,9 @@ fun PantallaServicios(navController: NavController) {
                             }
                         } else {
                             items(listaSocios) { socio ->
-                                CardSocioSimple(socio)
+                                CardSocioSimple(socio) {
+                                    navController.navigate("detalle_socio/${socio.id}")
+                                }
                             }
                         }
                     }
@@ -172,12 +173,12 @@ fun CardServicio(cat: CategoriaExtra, onClick: () -> Unit) {
 }
 
 @Composable
-fun CardSocioSimple(socio: UsuarioPerfil) {
+fun CardSocioSimple(socio: UsuarioPerfil, onClick: () -> Unit) {
     val nombreMostrar = socio.nombre ?: "Socio"
     val inicial = nombreMostrar.take(1).uppercase()
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)

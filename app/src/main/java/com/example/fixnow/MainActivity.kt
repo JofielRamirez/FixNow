@@ -15,6 +15,9 @@ import com.example.fixnow.screens.PantallaLogin
 import com.example.fixnow.screens.PantallaRegistro
 import com.example.fixnow.screens.PantallaServicios
 import com.example.fixnow.screens.PantallaPerfil
+import com.example.fixnow.screens.PantallaDetalleSocio
+import com.example.fixnow.screens.PantallaChat
+import com.example.fixnow.screens.PantallaListaChats
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -72,6 +75,16 @@ fun AppNavigation() {
         composable("inicio") { PantallaInicio(navController) }
         composable("servicios") { PantallaServicios(navController) }
         composable("perfil") { PantallaPerfil(navController) }
+        composable("mensajes") { PantallaListaChats(navController) }
+        composable("detalle_socio/{socioId}") { backStackEntry ->
+            val socioId = backStackEntry.arguments?.getString("socioId") ?: ""
+            PantallaDetalleSocio(navController, socioId)
+        }
+        composable("chat/{socioId}/{nombre}") { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("socioId") ?: ""
+            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Socio"
+            PantallaChat(navController, id, nombre)
+        }
         composable("servicios/{categoria}") { backStackEntry ->
             val categoria = backStackEntry.arguments?.getString("categoria") ?: "Servicio"
             PantallaListaServicios(navController, categoria)

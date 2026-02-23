@@ -19,8 +19,11 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -316,7 +319,6 @@ fun SeccionSociosDinamica(
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            // CORRECCIÓN AQUÍ: Manejo de nulos para evitar error de compilación
                             Text(socio.nombre ?: "Socio", fontWeight = FontWeight.Bold)
                             Text(socio.tipo_servicio ?: "Servicio General", fontSize = 12.sp, color = OrangePrimary)
                             Text("Disponible ahora", fontSize = 12.sp, color = Color.Gray)
@@ -335,6 +337,7 @@ fun BottomNavBar(navController: NavController) {
     val currentRoute = navBackStackEntry?.destination?.route
 
     NavigationBar(containerColor = Color.White) {
+        // INICIO
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, null) },
             label = { Text("Inicio") },
@@ -347,11 +350,19 @@ fun BottomNavBar(navController: NavController) {
                         restoreState = true
                     }
                 }
-            }
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = Color(0xFFFFB300),
+                selectedTextColor = Color(0xFFFFB300),
+                unselectedIconColor = Color.Gray,
+                unselectedTextColor = Color.Gray,
+                indicatorColor = Color.Transparent
+            )
         )
 
+        // SERVICIOS
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Search, null) },
+            icon = { Icon(Icons.Default.Apps, null) },
             label = { Text("Servicios") },
             selected = currentRoute == "servicios",
             onClick = {
@@ -362,9 +373,40 @@ fun BottomNavBar(navController: NavController) {
                         restoreState = true
                     }
                 }
-            }
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = Color(0xFFFFB300),
+                selectedTextColor = Color(0xFFFFB300),
+                unselectedIconColor = Color.Gray,
+                unselectedTextColor = Color.Gray,
+                indicatorColor = Color.Transparent
+            )
         )
 
+        // MENSAJES (NUEVA PESTAÑA)
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Email, null) },
+            label = { Text("Mensajes") },
+            selected = currentRoute == "mensajes",
+            onClick = {
+                if (currentRoute != "mensajes") {
+                    navController.navigate("mensajes") {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = Color(0xFFFFB300),
+                selectedTextColor = Color(0xFFFFB300),
+                unselectedIconColor = Color.Gray,
+                unselectedTextColor = Color.Gray,
+                indicatorColor = Color.Transparent
+            )
+        )
+
+        // PERFIL
         NavigationBarItem(
             icon = { Icon(Icons.Default.Person, null) },
             label = { Text("Perfil") },
@@ -377,7 +419,14 @@ fun BottomNavBar(navController: NavController) {
                         restoreState = true
                     }
                 }
-            }
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = Color(0xFFFFB300),
+                selectedTextColor = Color(0xFFFFB300),
+                unselectedIconColor = Color.Gray,
+                unselectedTextColor = Color.Gray,
+                indicatorColor = Color.Transparent
+            )
         )
     }
 }

@@ -60,6 +60,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    
+    // ICONOS EXTENDIDOS
+    implementation("androidx.compose.material:material-icons-extended")
 
     // ---------- NAVIGATION ----------
     implementation("androidx.navigation:navigation-compose:2.8.6")
@@ -69,6 +72,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:postgrest-kt:$supabase_version")
     implementation("io.github.jan-tennert.supabase:auth-kt:$supabase_version")
     implementation("io.github.jan-tennert.supabase:storage-kt:$supabase_version")
+    implementation("io.github.jan-tennert.supabase:realtime-kt:$supabase_version") // DEPENDENCIA DEL CHAT
 
     // ---------- KTOR 3 (Versiones unificadas) ----------
     val ktor_version = "3.0.3"

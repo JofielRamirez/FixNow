@@ -33,11 +33,10 @@ object UsuarioRepository {
 
     suspend fun obtenerSociosPorCategoria(categoria: String): List<UsuarioPerfil> {
         return try {
-            // Consulta simplificada para evitar errores de filtrado estricto
             val respuesta = client.postgrest["Usuarios"].select {
                 filter {
                     eq("es_prestador", true)
-                    ilike("tipo_servicio", categoria)
+                    ilike("tipo_servicio", "%$categoria%") 
                 }
             }.decodeList<UsuarioPerfil>()
 
@@ -49,10 +48,14 @@ object UsuarioRepository {
         }
     }
 
-    suspend fun obtenerFotosDeTrabajos(): List<String> {
+    suspend fun obtenerFotosDeTrabajos(uid: String? = null): List<String> {
         return try {
-            val resultado = client.postgrest["trabajos"].select().decodeList<Map<String, String>>()
-            resultado.map { it["url_imagen"] ?: "" }.filter { it.isNotEmpty() }
+            val respuesta = client.postgrest["trabajos"].select {
+                if (uid != null) {
+                    filter { eq("id_socio", uid) }
+                }
+            }.decodeList<Map<String, String>>()
+            respuesta.map { it["url_imagen"] ?: "" }.filter { it.isNotEmpty() }
         } catch (e: Exception) {
             Log.e("REPO", "Error al obtener fotos: ${e.message}")
             emptyList()
@@ -69,6 +72,17 @@ object UsuarioRepository {
         } catch (e: Exception) {
             Log.e("REPO", "Error subiendo foto: ${e.message}")
             throw e
+        }
+    }
+
+    suspend fun obtenerSocioPorId(uid: String): UsuarioPerfil? {
+        return try {
+            client.postgrest["Usuarios"].select {
+                filter { eq("id", uid) }
+            }.decodeSingleOrNull<UsuarioPerfil>()
+        } catch (e: Exception) {
+            Log.e("REPO", "Error al obtener socio: ${e.message}")
+            null
         }
     }
 }
