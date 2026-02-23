@@ -75,8 +75,6 @@ fun PantallaInicio(navController: NavController) {
         ) {
             HeaderAmarillo()
 
-            HeaderAmarillo()
-
 // Botón de Testing — quitar cuando ya no se necesite
             Button(
                 onClick = { navController.navigate("testing") },

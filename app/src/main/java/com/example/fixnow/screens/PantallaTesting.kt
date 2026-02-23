@@ -112,7 +112,7 @@ fun PantallaTesting(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🧪 Pantalla de Testeo", fontWeight = FontWeight.Bold) },
+                title = { Text("Pantalla de Testeo", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
@@ -140,7 +140,7 @@ fun PantallaTesting(navController: NavController) {
             // SECCIÓN: CITAS
             // =====================
             Text(
-                text = "📅 Agendar Cita",
+                text = "Agendar Cita",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF333333)
@@ -197,7 +197,7 @@ fun PantallaTesting(navController: NavController) {
                     Button(
                         onClick = {
                             if (nombre.isBlank() || servicio.isBlank() || fecha.isBlank() || hora.isBlank()) {
-                                mensajeCita = "⚠️ Llena todos los campos obligatorios"
+                                mensajeCita = "Llena todos los campos obligatorios"
                                 return@Button
                             }
                             cargandoCita = true
@@ -256,7 +256,7 @@ fun PantallaTesting(navController: NavController) {
             // SECCIÓN: UBICACIÓN
             // =====================
             Text(
-                text = "📍 Ubicación en Tiempo Real",
+                text = "Ubicación en Tiempo Real",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF333333)
@@ -302,7 +302,7 @@ fun PantallaTesting(navController: NavController) {
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFBC02D))
                     ) {
-                        Text("📡 Obtener Mi Ubicación", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Obtener Mi Ubicación", color = Color.White, fontWeight = FontWeight.Bold)
                     }
 
                     // Mapa de Google Maps embebido con AndroidView
