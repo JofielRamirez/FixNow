@@ -18,6 +18,7 @@ import com.example.fixnow.screens.PantallaPerfil
 import com.example.fixnow.screens.PantallaDetalleSocio
 import com.example.fixnow.screens.PantallaChat
 import com.example.fixnow.screens.PantallaListaChats
+import com.example.fixnow.screens.PantallaTesting
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -89,5 +90,6 @@ fun AppNavigation() {
             val categoria = backStackEntry.arguments?.getString("categoria") ?: "Servicio"
             PantallaListaServicios(navController, categoria)
         }
+        composable("testing") { PantallaTesting(navController) }
     }
 }

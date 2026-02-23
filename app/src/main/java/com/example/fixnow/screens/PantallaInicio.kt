@@ -75,6 +75,20 @@ fun PantallaInicio(navController: NavController) {
         ) {
             HeaderAmarillo()
 
+            HeaderAmarillo()
+
+// Botón de Testing — quitar cuando ya no se necesite
+            Button(
+                onClick = { navController.navigate("testing") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Pantalla de Testeo", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = "¿Qué servicio buscas hoy, $nombreUsuario?",
