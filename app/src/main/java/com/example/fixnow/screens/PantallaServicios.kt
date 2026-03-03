@@ -25,10 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.fixnow.OrangePrimary
-import com.example.fixnow.OrangeLight
-import com.example.fixnow.BackgroundWhite
-import com.example.fixnow.TextGray
+import com.example.fixnow.ui.theme.OrangePrimary
+import com.example.fixnow.ui.theme.OrangeLight
+import com.example.fixnow.ui.theme.BackgroundWhite
 import com.example.fixnow.data.AppEstadoPrefs
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository

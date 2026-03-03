@@ -18,7 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.fixnow.OrangePrimary
+import com.example.fixnow.ui.theme.OrangePrimary
+import com.example.fixnow.ui.theme.OrangeDark
 import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.data.UsuarioRepository
 import io.github.jan.supabase.auth.auth
@@ -151,7 +152,7 @@ fun PantallaRegistro(navController: NavController) {
                     }
                 },
                 enabled = !cargando,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCC8E00)),
+                colors = ButtonDefaults.buttonColors(containerColor = OrangeDark),
                 shape = RoundedCornerShape(50),
                 modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)
             ) {

@@ -23,7 +23,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.fixnow.OrangePrimary
+import com.example.fixnow.ui.theme.OrangePrimary
+import com.example.fixnow.ui.theme.OrangeDark
 import com.example.fixnow.data.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -146,7 +147,7 @@ fun PantallaLogin(navController: NavController) {
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCC8E00)),
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangeDark),
                     shape = RoundedCornerShape(50),
                     modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)
                 ) {

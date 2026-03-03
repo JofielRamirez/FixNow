@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fixnow.ui.theme.OrangePrimary
 import com.example.fixnow.ui.theme.OrangeLight
-import com.example.fixnow.BackgroundWhite
-import com.example.fixnow.TextGray
+import com.example.fixnow.ui.theme.BackgroundWhite
+import com.example.fixnow.ui.theme.TextGray
 
 @Composable
 fun PantallaListaServicios(navController: NavController, categoria: String) {

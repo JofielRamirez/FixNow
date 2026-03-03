@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fixnow.ui.theme.OrangePrimary
-import com.example.fixnow.ui.theme.OrangeLight
 import com.example.fixnow.data.ChatRepository
 import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.data.UsuarioPerfil
