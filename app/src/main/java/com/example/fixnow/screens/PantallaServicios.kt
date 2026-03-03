@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,13 +29,14 @@ import com.example.fixnow.OrangePrimary
 import com.example.fixnow.OrangeLight
 import com.example.fixnow.BackgroundWhite
 import com.example.fixnow.TextGray
+import com.example.fixnow.data.AppEstadoPrefs
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
 import kotlinx.coroutines.launch
 
 data class CategoriaExtra(
-    val nombre: String,      // Lo que ve el usuario (con acentos)
-    val idBusqueda: String,  // Lo que se busca en DB (estandarizado sin acentos)
+    val nombre: String,
+    val idBusqueda: String,
     val icon: ImageVector,
     val descripcion: String
 )
@@ -42,6 +44,8 @@ data class CategoriaExtra(
 @Composable
 fun PantallaServicios(navController: NavController) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
     var categoriaSeleccionada by remember { mutableStateOf<String?>(null) }
     var listaSocios by remember { mutableStateOf<List<UsuarioPerfil>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
@@ -57,6 +61,21 @@ fun PantallaServicios(navController: NavController) {
         CategoriaExtra("Jardinería", "Jardineria", Icons.Default.Face, "Jardines y plantas"),
         CategoriaExtra("Mudanzas", "Mudanzas", Icons.Default.ShoppingCart, "Carga y traslado")
     )
+
+    // ACTIVIDAD 1.4: Recuperar la ultima categoría guardada al entrar a la pantalla
+    LaunchedEffect(Unit) {
+        val categoriaGuardada = AppEstadoPrefs.obtenerUltimaCategoria(context)
+        Log.d("ESTADO_APP", "Categoría recuperada de SharedPreferences: '$categoriaGuardada'")
+        if (categoriaGuardada.isNotEmpty()) {
+            val catEncontrada = categorias.find { it.nombre == categoriaGuardada }
+            if (catEncontrada != null) {
+                categoriaSeleccionada = catEncontrada.nombre
+                cargando = true
+                listaSocios = UsuarioRepository.obtenerSociosPorCategoria(catEncontrada.idBusqueda)
+                cargando = false
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = { BottomNavBar(navController) }
@@ -78,7 +97,12 @@ fun PantallaServicios(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (categoriaSeleccionada != null) {
-                        IconButton(onClick = { categoriaSeleccionada = null }) {
+                        IconButton(onClick = {
+                            categoriaSeleccionada = null
+                            // ACTIVIDAD 1.4: Limpiamos la categoría guardada al volver atrás
+                            AppEstadoPrefs.guardarUltimaCategoria(context, "")
+                            Log.d("ESTADO_APP", "Categoría limpiada de SharedPreferences")
+                        }) {
                             Icon(Icons.Default.ArrowBack, null, tint = Color.White)
                         }
                     }
@@ -109,6 +133,9 @@ fun PantallaServicios(navController: NavController) {
                     items(categorias) { cat ->
                         CardServicio(cat) {
                             categoriaSeleccionada = cat.nombre
+                            // ACTIVIDAD 1.4: Guardamos categoría para persistir entre sesiones
+                            AppEstadoPrefs.guardarUltimaCategoria(context, cat.nombre)
+                            Log.d("ESTADO_APP", "Categoría guardada en SharedPreferences: ${cat.nombre}")
                             scope.launch {
                                 cargando = true
                                 listaSocios = UsuarioRepository.obtenerSociosPorCategoria(cat.idBusqueda)

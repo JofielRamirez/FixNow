@@ -2,6 +2,7 @@ package com.example.fixnow
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
@@ -27,11 +28,41 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Manejo correcto del deeplink en Supabase v3
+        Log.d("CICLO_VIDA", "onCreate → App iniciada por primera vez o recreada")
         SupabaseClient.client.handleDeeplinks(intent)
         setContent {
             AppNavigation()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Log.d("CICLO_VIDA", "onStart → App visible para el usuario")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d("CICLO_VIDA", "onResume → App en primer plano, lista para interactuar")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d("CICLO_VIDA", "onPause → App perdió el foco")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d("CICLO_VIDA", "onStop → App ya no es visible para el usuario")
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        Log.d("CICLO_VIDA", "onRestart → App vuelve de estar detenida")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("CICLO_VIDA", "onDestroy → App destruida completamente")
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -48,7 +79,6 @@ fun AppNavigation() {
     LaunchedEffect(sessionStatus) {
         when (sessionStatus) {
             is SessionStatus.Authenticated -> {
-                // Solo navega si no estamos ya en una pantalla de la app
                 if (navController.currentDestination?.route == "login" ||
                     navController.currentDestination?.route == "registro") {
                     navController.navigate("inicio") {
@@ -67,10 +97,7 @@ fun AppNavigation() {
         }
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = "login"
-    ) {
+    NavHost(navController = navController, startDestination = "login") {
         composable("login") { PantallaLogin(navController) }
         composable("registro") { PantallaRegistro(navController) }
         composable("inicio") { PantallaInicio(navController) }
@@ -92,4 +119,4 @@ fun AppNavigation() {
         }
         composable("testing") { PantallaTesting(navController) }
     }
-}
+}_
