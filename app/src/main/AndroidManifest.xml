@@ -22,8 +22,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.FixNow"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.FixNow.Splash">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

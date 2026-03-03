@@ -55,3 +55,4 @@ val TextWhite        = Color(0xFFF5F5F5)
 
 // Error
 val ErrorRed         = Color(0xFFCF6679)
+

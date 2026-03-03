@@ -5,65 +5,49 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.fixnow.data.SupabaseClient
-import com.example.fixnow.screens.PantallaInicio
-import com.example.fixnow.screens.PantallaListaServicios
-import com.example.fixnow.screens.PantallaLogin
-import com.example.fixnow.screens.PantallaRegistro
-import com.example.fixnow.screens.PantallaServicios
-import com.example.fixnow.screens.PantallaPerfil
-import com.example.fixnow.screens.PantallaDetalleSocio
-import com.example.fixnow.screens.PantallaChat
-import com.example.fixnow.screens.PantallaListaChats
-import com.example.fixnow.screens.PantallaTesting
+import com.example.fixnow.screens.*
+import com.example.fixnow.ui.theme.FixNowTheme
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
 import io.github.jan.supabase.auth.status.SessionStatus
 
+// Estado global del tema — accesible desde cualquier screen
+object TemaApp {
+    var oscuro by mutableStateOf<Boolean?>(null) // null = seguir sistema
+}
+
 class MainActivity : ComponentActivity() {
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d("CICLO_VIDA", "onCreate → App iniciada por primera vez o recreada")
+        installSplashScreen()
+        Log.d("CICLO_VIDA", "onCreate")
         SupabaseClient.client.handleDeeplinks(intent)
+
         setContent {
-            AppNavigation()
+            val sistemaOscuro = isSystemInDarkTheme()
+            val usarOscuro = TemaApp.oscuro ?: sistemaOscuro
+
+            FixNowTheme(darkTheme = usarOscuro) {
+                AppNavigation()
+            }
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        Log.d("CICLO_VIDA", "onStart → App visible para el usuario")
-    }
-
-    override fun onResume() {
-        super.onResume()
-        Log.d("CICLO_VIDA", "onResume → App en primer plano, lista para interactuar")
-    }
-
-    override fun onPause() {
-        super.onPause()
-        Log.d("CICLO_VIDA", "onPause → App perdió el foco")
-    }
-
-    override fun onStop() {
-        super.onStop()
-        Log.d("CICLO_VIDA", "onStop → App ya no es visible para el usuario")
-    }
-
-    override fun onRestart() {
-        super.onRestart()
-        Log.d("CICLO_VIDA", "onRestart → App vuelve de estar detenida")
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d("CICLO_VIDA", "onDestroy → App destruida completamente")
-    }
+    override fun onStart()   { super.onStart();   Log.d("CICLO_VIDA", "onStart") }
+    override fun onResume()  { super.onResume();  Log.d("CICLO_VIDA", "onResume") }
+    override fun onPause()   { super.onPause();   Log.d("CICLO_VIDA", "onPause") }
+    override fun onStop()    { super.onStop();    Log.d("CICLO_VIDA", "onStop") }
+    override fun onRestart() { super.onRestart(); Log.d("CICLO_VIDA", "onRestart") }
+    override fun onDestroy() { super.onDestroy(); Log.d("CICLO_VIDA", "onDestroy") }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -81,16 +65,12 @@ fun AppNavigation() {
             is SessionStatus.Authenticated -> {
                 if (navController.currentDestination?.route == "login" ||
                     navController.currentDestination?.route == "registro") {
-                    navController.navigate("inicio") {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigate("inicio") { popUpTo(0) { inclusive = true } }
                 }
             }
             is SessionStatus.NotAuthenticated -> {
                 if (navController.currentDestination?.route != "login") {
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigate("login") { popUpTo(0) { inclusive = true } }
                 }
             }
             else -> Unit
@@ -98,24 +78,24 @@ fun AppNavigation() {
     }
 
     NavHost(navController = navController, startDestination = "login") {
-        composable("login") { PantallaLogin(navController) }
+        composable("login")    { PantallaLogin(navController) }
         composable("registro") { PantallaRegistro(navController) }
-        composable("inicio") { PantallaInicio(navController) }
+        composable("inicio")   { PantallaInicio(navController) }
         composable("servicios") { PantallaServicios(navController) }
-        composable("perfil") { PantallaPerfil(navController) }
+        composable("perfil")   { PantallaPerfil(navController) }
         composable("mensajes") { PantallaListaChats(navController) }
         composable("detalle_socio/{socioId}") { backStackEntry ->
-            val socioId = backStackEntry.arguments?.getString("socioId") ?: ""
-            PantallaDetalleSocio(navController, socioId)
+            PantallaDetalleSocio(navController, backStackEntry.arguments?.getString("socioId") ?: "")
         }
         composable("chat/{socioId}/{nombre}") { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("socioId") ?: ""
-            val nombre = backStackEntry.arguments?.getString("nombre") ?: "Socio"
-            PantallaChat(navController, id, nombre)
+            PantallaChat(
+                navController,
+                backStackEntry.arguments?.getString("socioId") ?: "",
+                backStackEntry.arguments?.getString("nombre") ?: "Socio"
+            )
         }
         composable("servicios/{categoria}") { backStackEntry ->
-            val categoria = backStackEntry.arguments?.getString("categoria") ?: "Servicio"
-            PantallaListaServicios(navController, categoria)
+            PantallaListaServicios(navController, backStackEntry.arguments?.getString("categoria") ?: "Servicio")
         }
         composable("testing") { PantallaTesting(navController) }
     }

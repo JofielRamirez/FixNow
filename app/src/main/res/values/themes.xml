@@ -2,4 +2,10 @@
 <resources>
 
     <style name="Theme.FixNow" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.FixNow.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/orange_primary</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.FixNow</item>
+    </style>
 </resources>
+

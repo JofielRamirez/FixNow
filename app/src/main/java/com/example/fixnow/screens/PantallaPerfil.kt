@@ -7,6 +7,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,16 +29,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.fixnow.ui.theme.OrangeLight
-import com.example.fixnow.ui.theme.OrangePrimary
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.runtime.getValue
+import com.example.fixnow.TemaApp
+import com.example.fixnow.ui.theme.*
 import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.runtime.getValue
 
 @Composable
 fun PantallaPerfil(navController: NavController) {
@@ -46,46 +47,40 @@ fun PantallaPerfil(navController: NavController) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // --- ESTADOS ---
     var mostrarDialogo by remember { mutableStateOf(false) }
     var tipoSeleccionado by remember { mutableStateOf("") }
     var perfil by remember { mutableStateOf<UsuarioPerfil?>(null) }
     val categorias = listOf("Carpinteria", "Cerrajeria", "Mecanica", "Plomeria", "Electricidad")
 
     val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()?.trim('"')
-        ?: user?.email?.substringBefore("@")
-        ?: "Usuario"
+        ?: user?.email?.substringBefore("@") ?: "Usuario"
     val emailUsuario = user?.email ?: ""
     val inicial = nombreUsuario.firstOrNull()?.uppercaseChar() ?: 'U'
 
-    // --- LAUNCHER PARA GALERÍA ---
-    val pickMedia = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
+    // Colores que cambian con el tema
+    val fondo         = MaterialTheme.colorScheme.background
+    val superficie    = MaterialTheme.colorScheme.surface
+    val sobreSup      = MaterialTheme.colorScheme.onSurface
+    val sobreSupVar   = MaterialTheme.colorScheme.onSurfaceVariant
+    val supVar        = MaterialTheme.colorScheme.surfaceVariant
+    val divider       = MaterialTheme.colorScheme.outlineVariant
+
+    val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             scope.launch {
                 try {
-                    val inputStream = context.contentResolver.openInputStream(uri)
-                    val bytes = inputStream?.readBytes()
-                    val uidLimpio = user?.id?.replace("\"", "")?.trim() ?: ""
-
-                    if (bytes != null && uidLimpio.isNotEmpty()) {
-                        UsuarioRepository.subirFotoTrabajo(uidLimpio, bytes)
+                    val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
+                    val uid = user?.id?.replace("\"", "")?.trim() ?: ""
+                    if (bytes != null && uid.isNotEmpty()) {
+                        UsuarioRepository.subirFotoTrabajo(uid, bytes)
                         Toast.makeText(context, "¡Foto publicada!", Toast.LENGTH_SHORT).show()
                     }
-                } catch (e: Exception) {
-                    Log.e("SUBIDA_FOTO", "Error: ${e.message}")
-                }
+                } catch (e: Exception) { Log.e("SUBIDA_FOTO", "Error: ${e.message}") }
             }
         }
     }
 
-
-
-    // --- RECARGA DINÁMICA (Única fuente de verdad) ---
-    // Dentro de PantallaPerfil, usa esto para recargar siempre que regreses a la pestaña
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-
     LaunchedEffect(navBackStackEntry) {
         user?.id?.let { uid ->
             try {
@@ -93,17 +88,11 @@ fun PantallaPerfil(navController: NavController) {
                 val datos = SupabaseClient.client.postgrest["Usuarios"]
                     .select { filter { eq("id", uidLimpio) } }
                     .decodeSingleOrNull<UsuarioPerfil>()
-
-                if (datos != null) {
-                    perfil = datos // Aquí se actualiza la UI con los datos REALES de la DB
-                }
-            } catch (e: Exception) {
-                Log.e("PERFIL", "Error al recargar: ${e.message}")
-            }
+                if (datos != null) perfil = datos
+            } catch (e: Exception) { Log.e("PERFIL", "Error: ${e.message}") }
         }
     }
 
-    // --- DIÁLOGO DE REGISTRO ---
     if (mostrarDialogo) {
         AlertDialog(
             onDismissRequest = { mostrarDialogo = false },
@@ -115,8 +104,12 @@ fun PantallaPerfil(navController: NavController) {
                             Modifier.fillMaxWidth().clickable { tipoSeleccionado = cat }.padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            RadioButton(selected = (tipoSeleccionado == cat), onClick = { tipoSeleccionado = cat })
-                            Text(text = cat, modifier = Modifier.padding(start = 8.dp))
+                            RadioButton(
+                                selected = tipoSeleccionado == cat,
+                                onClick = { tipoSeleccionado = cat },
+                                colors = RadioButtonDefaults.colors(selectedColor = OrangePrimary)
+                            )
+                            Text(cat, modifier = Modifier.padding(start = 8.dp))
                         }
                     }
                 }
@@ -126,77 +119,72 @@ fun PantallaPerfil(navController: NavController) {
                     onClick = {
                         scope.launch {
                             try {
-                                val idUsuario = user?.id ?: ""
-                                if (idUsuario.isNotEmpty() && tipoSeleccionado.isNotEmpty()) {
-                                    UsuarioRepository.convertirseEnPrestador(idUsuario, tipoSeleccionado)
-
-                                    // Actualización local para feedback inmediato
+                                val id = user?.id ?: ""
+                                if (id.isNotEmpty() && tipoSeleccionado.isNotEmpty()) {
+                                    UsuarioRepository.convertirseEnPrestador(id, tipoSeleccionado)
                                     perfil = perfil?.copy(es_prestador = true, tipo_servicio = tipoSeleccionado)
-
-                                    val nombreExito = perfil?.nombre ?: "Usuario"
                                     mostrarDialogo = false
-                                    Toast.makeText(context, "¡Felicidades $nombreExito, ahora eres socio!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "¡Felicidades, ahora eres socio!", Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
-                                Log.e("UI_ERROR", "Error: ${e.message}")
                                 Toast.makeText(context, "Error al actualizar", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
-                    enabled = tipoSeleccionado.isNotEmpty()
+                    enabled = tipoSeleccionado.isNotEmpty(),
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                 ) { Text("Confirmar") }
             },
-            dismissButton = { TextButton(onClick = { mostrarDialogo = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { mostrarDialogo = false }) { Text("Cancelar", color = OrangePrimary) } }
         )
     }
 
-    Scaffold(
-        bottomBar = { BottomNavBar(navController) }
-    ) { padding ->
+    Scaffold(bottomBar = { BottomNavBar(navController) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
+                .background(fondo)                          // ← tema
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header con degradado
+            // ── Header naranja (siempre naranja, no cambia) ──────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .background(brush = Brush.verticalGradient(colors = listOf(OrangePrimary, OrangeLight)))
+                    .height(220.dp)
+                    .background(brush = Brush.verticalGradient(colors = listOf(OrangeDark, OrangePrimary)))
             ) {
                 Column(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Box(
-                        modifier = Modifier.size(80.dp).clip(CircleShape).background(Color.White),
+                        modifier = Modifier.size(88.dp).clip(CircleShape).background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = inicial.toString(), fontSize = 36.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(nombreUsuario, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-                    if (perfil?.es_prestador == true) {
-                        Surface(
-                            color = Color.White.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.padding(top = 4.dp)
+                        Box(
+                            modifier = Modifier.size(80.dp).clip(CircleShape).background(Color(0xFFFFF3E0)),
+                            contentAlignment = Alignment.Center
                         ) {
+                            Text(inicial.toString(), fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, color = OrangePrimary)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(nombreUsuario, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (perfil?.es_prestador == true) {
+                        Surface(color = Color.White.copy(alpha = 0.25f), shape = RoundedCornerShape(20.dp)) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF69F0AE), modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Socio: ${perfil?.tipo_servicio}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Socio · ${perfil?.tipo_servicio}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     } else {
-                        Text(emailUsuario, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+                        Text(emailUsuario, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
                     }
                 }
             }
@@ -204,79 +192,115 @@ fun PantallaPerfil(navController: NavController) {
             Spacer(modifier = Modifier.height(20.dp))
 
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                // Sección Cuenta
-                Text("Cuenta", fontSize = 13.sp, color = Color(0xFF9E9E9E), fontWeight = FontWeight.Medium)
+
+                // ── CUENTA ───────────────────────────────────────
+                Text("CUENTA", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Spacer(modifier = Modifier.height(8.dp))
                 Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = superficie),   // ← tema
                     elevation = CardDefaults.cardElevation(2.dp)
                 ) {
                     Column {
-                        OpcionPerfil(icon = Icons.Default.Settings, titulo = "Ajustes", subtitulo = "Notificaciones, idioma") {}
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF0F0F0))
-
+                        OpcionPerfil(Icons.Default.Settings, "Ajustes", "Notificaciones, idioma", sobreSup, sobreSupVar, supVar) {}
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = divider)
                         if (perfil?.es_prestador == true) {
-                            OpcionPerfil(
-                                icon = Icons.Default.Build,
-                                titulo = "Configurar mi Servicio",
-                                subtitulo = "Gestionar mi perfil de ${perfil?.tipo_servicio}",
-                                iconColor = OrangePrimary
-                            ) {}
+                            OpcionPerfil(Icons.Default.Build, "Configurar mi Servicio", "Gestionar ${perfil?.tipo_servicio}", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) {}
                         } else {
-                            OpcionPerfil(
-                                icon = Icons.Default.Star,
-                                titulo = "Conviértete en Socio",
-                                subtitulo = "Ofrece tus servicios en FixNow",
-                                iconColor = OrangePrimary
-                            ) { mostrarDialogo = true }
+                            OpcionPerfil(Icons.Default.Star, "Conviértete en Socio", "Ofrece tus servicios en FixNow", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) { mostrarDialogo = true }
                         }
                     }
                 }
 
-                // Sección Herramientas Socio
+                // ── HERRAMIENTAS DE SOCIO ─────────────────────────
                 if (perfil?.es_prestador == true) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Herramientas de Socio", fontSize = 13.sp, color = Color(0xFF9E9E9E), fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text("HERRAMIENTAS DE SOCIO", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
                     Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        modifier = Modifier.padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = superficie),   // ← tema
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
-                        OpcionPerfil(
-                            icon = Icons.Default.AddCircle,
-                            titulo = "Subir fotos de mi trabajo",
-                            subtitulo = "Publica tus trabajos realizados",
-                            iconColor = OrangePrimary
-                        ) {
+                        OpcionPerfil(Icons.Default.AddCircle, "Subir fotos de mi trabajo", "Publica tus trabajos realizados", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) {
                             pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(
-                    onClick = { scope.launch { SupabaseClient.client.auth.signOut() } },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFEEE0)),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) {
-                    Icon(Icons.Default.ExitToApp, null, tint = Color(0xFFE53935))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Cerrar sesión", color = Color(0xFFE53935), fontWeight = FontWeight.SemiBold)
-                }
+                // ── APARIENCIA ────────────────────────────────────
                 Spacer(modifier = Modifier.height(20.dp))
+                Text("APARIENCIA", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = superficie),       // ← tema
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.size(42.dp).background(supVar, RoundedCornerShape(12.dp)), // ← tema
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Star, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Tema oscuro", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = sobreSup)
+                            Text(
+                                when (TemaApp.oscuro) {
+                                    true  -> "Activado manualmente"
+                                    false -> "Desactivado manualmente"
+                                    null  -> "Según el sistema"
+                                },
+                                fontSize = 12.sp, color = sobreSupVar
+                            )
+                        }
+                        Switch(
+                            checked = TemaApp.oscuro ?: isSystemInDarkTheme(),
+                            onCheckedChange = { TemaApp.oscuro = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = OrangePrimary,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = supVar
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // ── CERRAR SESIÓN ─────────────────────────────────
+                OutlinedButton(
+                    onClick = { scope.launch { SupabaseClient.client.auth.signOut() } },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorError),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, ColorError.copy(alpha = 0.4f))
+                ) {
+                    Icon(Icons.Default.ExitToApp, null, tint = ColorError, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cerrar sesión", color = ColorError, fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
 }
+
 @Composable
 fun OpcionPerfil(
     icon: ImageVector,
     titulo: String,
     subtitulo: String,
-    iconColor: Color = Color(0xFF757575),
+    colorTitulo: Color,
+    colorSubtitulo: Color,
+    colorFondoIcono: Color,
+    iconColor: Color = Color(0xFF9E9E9E),
     onClick: () -> Unit
 ) {
     Row(
@@ -284,16 +308,16 @@ fun OpcionPerfil(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(40.dp).background(Color(0xFFF5F5F5), RoundedCornerShape(10.dp)),
+            modifier = Modifier.size(42.dp).background(colorFondoIcono, RoundedCornerShape(12.dp)), // ← tema
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
         }
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(titulo, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
-            Text(subtitulo, fontSize = 12.sp, color = Color(0xFF9E9E9E))
+            Text(titulo, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = colorTitulo)       // ← tema
+            Text(subtitulo, fontSize = 12.sp, color = colorSubtitulo)                                 // ← tema
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(20.dp))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = colorSubtitulo, modifier = Modifier.size(20.dp))
     }
 }

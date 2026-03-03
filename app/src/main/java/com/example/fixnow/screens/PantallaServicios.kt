@@ -25,9 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.fixnow.ui.theme.OrangePrimary
-import com.example.fixnow.ui.theme.OrangeLight
-import com.example.fixnow.ui.theme.BackgroundWhite
+import com.example.fixnow.ui.theme.*
 import com.example.fixnow.data.AppEstadoPrefs
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
@@ -49,47 +47,52 @@ fun PantallaServicios(navController: NavController) {
     var listaSocios by remember { mutableStateOf<List<UsuarioPerfil>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
 
+    // Colores del tema
+    val fondo       = MaterialTheme.colorScheme.background
+    val superficie  = MaterialTheme.colorScheme.surface
+    val supVar      = MaterialTheme.colorScheme.surfaceVariant
+    val sobreFondo  = MaterialTheme.colorScheme.onBackground
+    val sobreSup    = MaterialTheme.colorScheme.onSurface
+    val sobreSupVar = MaterialTheme.colorScheme.onSurfaceVariant
+
     val categorias = listOf(
-        CategoriaExtra("Plomería", "Plomeria", Icons.Default.Build, "Tuberías y más"),
-        CategoriaExtra("Cerrajería", "Cerrajeria", Icons.Default.Lock, "Llaves y cerraduras"),
-        CategoriaExtra("Electricidad", "Electricidad", Icons.Default.Star, "Instalaciones"),
-        CategoriaExtra("Mecánica", "Mecanica", Icons.Default.Settings, "Autos y motores"),
-        CategoriaExtra("Carpintería", "Carpinteria", Icons.Default.Home, "Muebles y madera"),
-        CategoriaExtra("Limpieza", "Limpieza", Icons.Default.Delete, "Hogar y oficina"),
-        CategoriaExtra("Pintura", "Pintura", Icons.Default.Create, "Interior y exterior"),
-        CategoriaExtra("Jardinería", "Jardineria", Icons.Default.Face, "Jardines y plantas"),
-        CategoriaExtra("Mudanzas", "Mudanzas", Icons.Default.ShoppingCart, "Carga y traslado")
+        CategoriaExtra("Plomería",    "Plomeria",    Icons.Default.Build,       "Tuberías y más"),
+        CategoriaExtra("Cerrajería",  "Cerrajeria",  Icons.Default.Lock,        "Llaves y cerraduras"),
+        CategoriaExtra("Electricidad","Electricidad",Icons.Default.Star,        "Instalaciones"),
+        CategoriaExtra("Mecánica",    "Mecanica",    Icons.Default.Settings,    "Autos y motores"),
+        CategoriaExtra("Carpintería", "Carpinteria", Icons.Default.Home,        "Muebles y madera"),
+        CategoriaExtra("Limpieza",    "Limpieza",    Icons.Default.Delete,      "Hogar y oficina"),
+        CategoriaExtra("Pintura",     "Pintura",     Icons.Default.Create,      "Interior y exterior"),
+        CategoriaExtra("Jardinería",  "Jardineria",  Icons.Default.Face,        "Jardines y plantas"),
+        CategoriaExtra("Mudanzas",    "Mudanzas",    Icons.Default.ShoppingCart,"Carga y traslado")
     )
 
-    // ACTIVIDAD 1.4: Recuperar la ultima categoría guardada al entrar a la pantalla
     LaunchedEffect(Unit) {
-        val categoriaGuardada = AppEstadoPrefs.obtenerUltimaCategoria(context)
-        Log.d("ESTADO_APP", "Categoría recuperada de SharedPreferences: '$categoriaGuardada'")
-        if (categoriaGuardada.isNotEmpty()) {
-            val catEncontrada = categorias.find { it.nombre == categoriaGuardada }
-            if (catEncontrada != null) {
-                categoriaSeleccionada = catEncontrada.nombre
+        val guardada = AppEstadoPrefs.obtenerUltimaCategoria(context)
+        if (guardada.isNotEmpty()) {
+            val cat = categorias.find { it.nombre == guardada }
+            if (cat != null) {
+                categoriaSeleccionada = cat.nombre
                 cargando = true
-                listaSocios = UsuarioRepository.obtenerSociosPorCategoria(catEncontrada.idBusqueda)
+                listaSocios = UsuarioRepository.obtenerSociosPorCategoria(cat.idBusqueda)
                 cargando = false
             }
         }
     }
 
-    Scaffold(
-        bottomBar = { BottomNavBar(navController) }
-    ) { padding ->
+    Scaffold(bottomBar = { BottomNavBar(navController) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BackgroundWhite)
+                .background(fondo)                       // ← era BackgroundWhite hardcodeado
                 .padding(padding)
         ) {
+            // Header naranja — siempre naranja
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    .background(brush = Brush.verticalGradient(colors = listOf(OrangePrimary, OrangeLight)))
+                    .background(brush = Brush.verticalGradient(colors = listOf(OrangeDark, OrangePrimary)))
             ) {
                 Row(
                     modifier = Modifier.align(Alignment.BottomStart).padding(20.dp),
@@ -98,16 +101,17 @@ fun PantallaServicios(navController: NavController) {
                     if (categoriaSeleccionada != null) {
                         IconButton(onClick = {
                             categoriaSeleccionada = null
-                            // ACTIVIDAD 1.4: Limpiamos la categoría guardada al volver atrás
                             AppEstadoPrefs.guardarUltimaCategoria(context, "")
-                            Log.d("ESTADO_APP", "Categoría limpiada de SharedPreferences")
                         }) {
                             Icon(Icons.Default.ArrowBack, null, tint = Color.White)
                         }
                     }
                     Column {
                         Text(categoriaSeleccionada ?: "Servicios", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-                        Text(if (categoriaSeleccionada == null) "¿En qué te podemos ayudar?" else "Socios disponibles", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+                        Text(
+                            if (categoriaSeleccionada == null) "¿En qué te podemos ayudar?" else "Socios disponibles",
+                            color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp
+                        )
                     }
                 }
             }
@@ -115,13 +119,9 @@ fun PantallaServicios(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
 
             if (categoriaSeleccionada == null) {
-                Text(
-                    "Servicios básicos",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF333333),
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
+                Text("Servicios básicos", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                    color = sobreFondo,                  // ← era Color(0xFF333333)
+                    modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(modifier = Modifier.height(12.dp))
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -130,11 +130,9 @@ fun PantallaServicios(navController: NavController) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(categorias) { cat ->
-                        CardServicio(cat) {
+                        CardServicio(cat, superficie, supVar, sobreFondo) {
                             categoriaSeleccionada = cat.nombre
-                            // ACTIVIDAD 1.4: Guardamos categoría para persistir entre sesiones
                             AppEstadoPrefs.guardarUltimaCategoria(context, cat.nombre)
-                            Log.d("ESTADO_APP", "Categoría guardada en SharedPreferences: ${cat.nombre}")
                             scope.launch {
                                 cargando = true
                                 listaSocios = UsuarioRepository.obtenerSociosPorCategoria(cat.idBusqueda)
@@ -156,12 +154,12 @@ fun PantallaServicios(navController: NavController) {
                         if (listaSocios.isEmpty()) {
                             item {
                                 Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                    Text("No hay socios registrados en ${categoriaSeleccionada?.lowercase()}.", color = Color.Gray)
+                                    Text("No hay socios en ${categoriaSeleccionada?.lowercase()}.", color = sobreSupVar)
                                 }
                             }
                         } else {
                             items(listaSocios) { socio ->
-                                CardSocioSimple(socio) {
+                                CardSocioSimple(socio, superficie, sobreSup) {
                                     navController.navigate("detalle_socio/${socio.id}")
                                 }
                             }
@@ -174,11 +172,11 @@ fun PantallaServicios(navController: NavController) {
 }
 
 @Composable
-fun CardServicio(cat: CategoriaExtra, onClick: () -> Unit) {
+fun CardServicio(cat: CategoriaExtra, superficie: Color, supVar: Color, sobreFondo: Color, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(3.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = superficie),   // ← era Color.White
         modifier = Modifier.aspectRatio(1f).clickable { onClick() }
     ) {
         Column(
@@ -187,36 +185,36 @@ fun CardServicio(cat: CategoriaExtra, onClick: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Box(
-                modifier = Modifier.size(44.dp).background(color = Color(0xFFFFF3E0), shape = RoundedCornerShape(12.dp)),
+                modifier = Modifier.size(44.dp).background(Color(0xFFFFF3E0), RoundedCornerShape(12.dp)), // naranja decorativo
                 contentAlignment = Alignment.Center
             ) {
-                Icon(cat.icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = OrangePrimary)
+                Icon(cat.icon, null, modifier = Modifier.size(24.dp), tint = OrangePrimary)
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(cat.nombre, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF333333))
+            Text(cat.nombre, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = sobreFondo) // ← era Color(0xFF333333)
         }
     }
 }
 
 @Composable
-fun CardSocioSimple(socio: UsuarioPerfil, onClick: () -> Unit) {
-    val nombreMostrar = socio.nombre ?: "Socio"
-    val inicial = nombreMostrar.take(1).uppercase()
-
+fun CardSocioSimple(socio: UsuarioPerfil, superficie: Color, sobreSup: Color, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = superficie),   // ← era Color.White
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(40.dp).background(Color(0xFFFFEEE0), CircleShape), contentAlignment = Alignment.Center) {
-                Text(inicial, fontWeight = FontWeight.Bold, color = OrangePrimary)
+            Box(
+                modifier = Modifier.size(40.dp).background(Color(0xFFFFF3E0), CircleShape), // naranja decorativo
+                contentAlignment = Alignment.Center
+            ) {
+                Text(socio.nombre?.take(1)?.uppercase() ?: "S", fontWeight = FontWeight.Bold, color = OrangePrimary)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(nombreMostrar, fontWeight = FontWeight.Bold, color = Color(0xFF333333))
-                Text(socio.tipo_servicio ?: "Servicio general", fontSize = 12.sp, color = Color.Gray)
+                Text(socio.nombre ?: "Socio", fontWeight = FontWeight.Bold, color = sobreSup)          // ← era Color(0xFF333333)
+                Text(socio.tipo_servicio ?: "Servicio general", fontSize = 12.sp, color = sobreSup.copy(alpha = 0.6f)) // ← era Color.Gray
             }
         }
     }
