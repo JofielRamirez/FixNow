@@ -119,4 +119,4 @@ fun AppNavigation() {
         }
         composable("testing") { PantallaTesting(navController) }
     }
-}_
+}

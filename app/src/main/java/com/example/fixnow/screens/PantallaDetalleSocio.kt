@@ -23,8 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.fixnow.OrangePrimary
-import com.example.fixnow.OrangeLight
+import com.example.fixnow.ui.theme.OrangePrimary
+import com.example.fixnow.ui.theme.OrangeLight
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
 
