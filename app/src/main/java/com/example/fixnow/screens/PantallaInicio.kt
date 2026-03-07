@@ -33,6 +33,7 @@ import com.example.fixnow.data.UsuarioRepository
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.ui.theme.*
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.postgrest
 
 @Composable
 fun PantallaInicio(navController: NavController) {
@@ -40,11 +41,18 @@ fun PantallaInicio(navController: NavController) {
     val user = session?.user
     val context = LocalContext.current
 
+    var perfil by remember { mutableStateOf<UsuarioPerfil?>(null) }
+    var fotosTrabajos by remember { mutableStateOf<List<String>>(emptyList()) }
+
     val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()?.trim('"')
         ?: user?.email?.substringBefore("@") ?: "Usuario"
 
-    var fotosTrabajos by remember { mutableStateOf<List<String>>(emptyList()) }
-    LaunchedEffect(Unit) { fotosTrabajos = UsuarioRepository.obtenerFotosDeTrabajos() }
+    LaunchedEffect(Unit) {
+        fotosTrabajos = UsuarioRepository.obtenerFotosDeTrabajos()
+        user?.id?.let { uid ->
+            perfil = UsuarioRepository.obtenerSocioPorId(uid)
+        }
+    }
 
     // Colores del tema
     val fondo      = MaterialTheme.colorScheme.background
@@ -53,13 +61,13 @@ fun PantallaInicio(navController: NavController) {
     val sobreSup   = MaterialTheme.colorScheme.onSurface
     val supVar     = MaterialTheme.colorScheme.surfaceVariant
 
-    Scaffold(bottomBar = { BottomNavBar(navController) }) { padding ->
+    Scaffold(bottomBar = { BottomNavBar(navController, perfil?.es_prestador == true) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .background(fondo)                              // ← tema
+                .background(fondo)
         ) {
             // ── Header naranja ───────────────────────────────────
             Box(
@@ -84,7 +92,13 @@ fun PantallaInicio(navController: NavController) {
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Hola, ${nombreUsuario.split(" ").first()} 👋", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text("¿Qué servicio necesitas hoy?", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+                    
+                    if (perfil?.es_prestador == true) {
+                        Text("Panel de Socio activo - ${perfil?.tipo_servicio}", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+                    } else {
+                        Text("¿Qué servicio necesitas hoy?", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+                    }
+                    
                     Spacer(modifier = Modifier.height(14.dp))
                     Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), color = Color.White, shadowElevation = 4.dp) {
                         Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -96,45 +110,17 @@ fun PantallaInicio(navController: NavController) {
                 }
             }
 
-            // ── Accesos rápidos ──────────────────────────────────
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Text("Accesos rápidos", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo)
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    listOf(
-                        Triple("Plomería",  Icons.Default.Build,    "Plomería"),
-                        Triple("Eléctrico", Icons.Default.Star,     "Electricidad"),
-                        Triple("Mecánica",  Icons.Default.Settings, "Mecánica"),
-                        Triple("Más",       Icons.Default.Apps,     null)
-                    ).forEach { (label, icon, categoria) ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f).clickable {
-                                if (categoria != null) AppEstadoPrefs.guardarUltimaCategoria(context, categoria)
-                                navController.navigate("servicios") {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = false
-                                }
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(supVar), // ← tema
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(icon, null, tint = OrangePrimary, modifier = Modifier.size(26.dp))
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(label, fontSize = 11.sp, color = sobreFondo, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
+            // Si es socio, mostramos accesos de socio, si no, accesos de cliente
+            if (perfil?.es_prestador == true) {
+                SeccionAccesosSocio(navController, sobreFondo, supVar)
+            } else {
+                SeccionAccesosCliente(navController, context, sobreFondo, supVar)
             }
 
             // ── Trabajos recientes ───────────────────────────────
             Column(modifier = Modifier.padding(bottom = 8.dp)) {
                 Row(modifier = Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Trabajos recientes", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo, modifier = Modifier.weight(1f))
+                    Text("Trabajos realizados", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo, modifier = Modifier.weight(1f))
                     Text("Ver todos", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -151,17 +137,79 @@ fun PantallaInicio(navController: NavController) {
                 }
             }
 
-            // ── Socios destacados ────────────────────────────────
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Socios destacados", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo, modifier = Modifier.weight(1f))
-                    Text("Ver todos", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable { navController.navigate("servicios") })
+            // ── Socios destacados (Solo para clientes) ───────────
+            if (perfil?.es_prestador != true) {
+                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Socios destacados", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo, modifier = Modifier.weight(1f))
+                        Text("Ver todos", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable { navController.navigate("servicios") })
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CardSocioDestacado("Carpintería El Super", 22, "A 12 min de ti", "Carpintería", superficie, sobreSup)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    CardSocioDestacado("Plomería Tecate", 15, "A 5 min de ti", "Plomería", superficie, sobreSup)
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                CardSocioDestacado("Carpintería El Super", 22, "A 12 min de ti", "Carpintería", superficie, sobreSup)
-                Spacer(modifier = Modifier.height(10.dp))
-                CardSocioDestacado("Plomería Tecate", 15, "A 5 min de ti", "Plomería", superficie, sobreSup)
+            }
+        }
+    }
+}
+
+@Composable
+fun SeccionAccesosCliente(navController: NavController, context: android.content.Context, sobreFondo: Color, supVar: Color) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+        Text("Categorías", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo)
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            listOf(
+                Triple("Plomería",  Icons.Default.Build,    "Plomería"),
+                Triple("Eléctrico", Icons.Default.Star,     "Electricidad"),
+                Triple("Mecánica",  Icons.Default.Settings, "Mecánica"),
+                Triple("Más",       Icons.Default.Apps,     null)
+            ).forEach { (label, icon, categoria) ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f).clickable {
+                        if (categoria != null) AppEstadoPrefs.guardarUltimaCategoria(context, categoria)
+                        navController.navigate("servicios") {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                        }
+                    }
+                ) {
+                    Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(supVar), contentAlignment = Alignment.Center) {
+                        Icon(icon, null, tint = OrangePrimary, modifier = Modifier.size(26.dp))
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(label, fontSize = 11.sp, color = sobreFondo, fontWeight = FontWeight.Medium)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SeccionAccesosSocio(navController: NavController, sobreFondo: Color, supVar: Color) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+        Text("Gestión de Socio", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo)
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            listOf(
+                Triple("Citas",     Icons.Default.DateRange, "socio_citas"),
+                Triple("Historial", Icons.Default.History,   "socio_historial"),
+                Triple("Reseñas",   Icons.Default.Comment,   "socio_resenas"),
+                Triple("Perfil",    Icons.Default.Edit,      "socio_perfil")
+            ).forEach { (label, icon, ruta) ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f).clickable { navController.navigate(ruta) }
+                ) {
+                    Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(supVar), contentAlignment = Alignment.Center) {
+                        Icon(icon, null, tint = OrangePrimary, modifier = Modifier.size(26.dp))
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(label, fontSize = 11.sp, color = sobreFondo, fontWeight = FontWeight.Medium)
+                }
             }
         }
     }
@@ -175,7 +223,7 @@ fun CardFotoSoloVista(url: String?) {
         if (url != null) {
             AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else {
-            Box(Modifier.fillMaxSize().background(supVar), contentAlignment = Alignment.Center) {  // ← tema
+            Box(Modifier.fillMaxSize().background(supVar), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Place, null, tint = sobreSupVar, modifier = Modifier.size(28.dp))
                     Spacer(modifier = Modifier.height(4.dp))
@@ -191,7 +239,7 @@ fun CardSocioDestacado(nombre: String, resenas: Int, tiempo: String, categoria: 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = superficie),   // ← tema
+        colors = CardDefaults.cardColors(containerColor = superficie),
         elevation = CardDefaults.cardElevation(3.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -200,7 +248,7 @@ fun CardSocioDestacado(nombre: String, resenas: Int, tiempo: String, categoria: 
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(nombre, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = sobreSup)         // ← tema
+                Text(nombre, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = sobreSup)
                 Text(categoria, fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.Medium)
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                     Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(13.dp))
@@ -213,20 +261,31 @@ fun CardSocioDestacado(nombre: String, resenas: Int, tiempo: String, categoria: 
 }
 
 @Composable
-fun BottomNavBar(navController: NavController) {
+fun BottomNavBar(navController: NavController, esSocio: Boolean = false) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,          // ← tema
-        tonalElevation = 8.dp
-    ) {
+    val items = if (esSocio) {
+        listOf(
+            Triple("inicio",        Icons.Default.Dashboard, "Panel"),
+            Triple("socio_citas",   Icons.Default.Event,     "Citas"),
+            Triple("mensajes",      Icons.Default.Chat,      "Mensajes"),
+            Triple("perfil",        Icons.Default.Person,    "Perfil")
+        )
+    } else {
         listOf(
             Triple("inicio",    Icons.Default.Home,   "Inicio"),
             Triple("servicios", Icons.Default.Apps,   "Servicios"),
             Triple("mensajes",  Icons.Default.Email,  "Mensajes"),
             Triple("perfil",    Icons.Default.Person, "Perfil")
-        ).forEach { (ruta, icon, label) ->
+        )
+    }
+
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 8.dp
+    ) {
+        items.forEach { (ruta, icon, label) ->
             NavigationBarItem(
                 icon = { Icon(icon, null) },
                 label = { Text(label, fontSize = 11.sp) },
@@ -243,8 +302,8 @@ fun BottomNavBar(navController: NavController) {
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = OrangePrimary,
                     selectedTextColor = OrangePrimary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,   // ← tema
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,   // ← tema
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     indicatorColor = Color(0xFFFFF3E0)
                 )
             )

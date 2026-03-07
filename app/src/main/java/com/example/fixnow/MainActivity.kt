@@ -69,7 +69,8 @@ fun AppNavigation() {
                 }
             }
             is SessionStatus.NotAuthenticated -> {
-                if (navController.currentDestination?.route != "login") {
+                if (navController.currentDestination?.route != "login" &&
+                    navController.currentDestination?.route != "registro") {
                     navController.navigate("login") { popUpTo(0) { inclusive = true } }
                 }
             }
@@ -84,6 +85,14 @@ fun AppNavigation() {
         composable("servicios") { PantallaServicios(navController) }
         composable("perfil")   { PantallaPerfil(navController) }
         composable("mensajes") { PantallaListaChats(navController) }
+        composable("registro_socio") { PantallaRegistroSocio(navController) }
+        
+        // Rutas de Socio
+        composable("socio_citas") { PantallaSocioCitas(navController) }
+        composable("socio_historial") { PantallaSocioHistorial(navController) }
+        composable("socio_resenas") { PantallaSocioResenas(navController) }
+        composable("socio_perfil") { PantallaSocioPerfil(navController) }
+
         composable("detalle_socio/{socioId}") { backStackEntry ->
             PantallaDetalleSocio(navController, backStackEntry.arguments?.getString("socioId") ?: "")
         }

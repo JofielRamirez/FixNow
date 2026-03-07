@@ -1,5 +1,6 @@
 package com.example.fixnow.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,22 +19,31 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.fixnow.ui.theme.OrangePrimary
+import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaDetalleSocio(navController: NavController, socioId: String) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val session = SupabaseClient.client.auth.currentSessionOrNull()
+    val idCliente = session?.user?.id ?: ""
+
     var socio by remember { mutableStateOf<UsuarioPerfil?>(null) }
     var fotosTrabajos by remember { mutableStateOf<List<String>>(emptyList()) }
     var cargando by remember { mutableStateOf(true) }
-    var nuevoComentario by remember { mutableStateOf("") }
-    val listaComentarios = remember { mutableStateListOf<String>() }
+    var mostrarDialogoCita by remember { mutableStateOf(false) }
 
     // Colores del tema
     val fondo       = MaterialTheme.colorScheme.background
@@ -52,16 +62,27 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
     Scaffold(
         bottomBar = { BottomNavBar(navController) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { navController.navigate("chat/${socioId}/${socio?.nombre ?: "Socio"}") },
-                containerColor = OrangePrimary,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(30.dp),
-                modifier = Modifier.padding(bottom = 16.dp, end = 8.dp)
-            ) {
-                Icon(Icons.Default.Email, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Chat")
+            Column(horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(
+                    onClick = { navController.navigate("chat/${socioId}/${socio?.nombre ?: "Socio"}") },
+                    containerColor = superficie,
+                    contentColor = OrangePrimary,
+                    shape = CircleShape
+                ) { Icon(Icons.Default.Email, null) }
+                
+                Spacer(Modifier.height(12.dp))
+                
+                ExtendedFloatingActionButton(
+                    onClick = { mostrarDialogoCita = true },
+                    containerColor = OrangePrimary,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(30.dp),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Icon(Icons.Default.CalendarMonth, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Agendar Cita")
+                }
             }
         },
         floatingActionButtonPosition = FabPosition.End
@@ -74,20 +95,20 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(fondo)                        // ← era Color.White
+                    .background(fondo)
                     .padding(paddingValues)
             ) {
-                // ── Header con foto ──────────────────────────────
+                // ── Header con foto de perfil o trabajo ──────────────────────────────
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+                    Box(modifier = Modifier.fillMaxWidth().height(250.dp)) {
                         AsyncImage(
-                            model = if (fotosTrabajos.isNotEmpty()) fotosTrabajos.first() else "https://via.placeholder.com/600x400",
+                            model = socio?.urlFotoPerfil ?: (if (fotosTrabajos.isNotEmpty()) fotosTrabajos.first() else "https://via.placeholder.com/600x400"),
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
                         Box(modifier = Modifier.fillMaxSize().background(
-                            brush = Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent))
+                            brush = Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent, Color.Black.copy(alpha = 0.7f)))
                         ))
                         IconButton(
                             onClick = { navController.popBackStack() },
@@ -95,93 +116,49 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                         ) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                         }
+                        
+                        Column(modifier = Modifier.align(Alignment.BottomStart).padding(20.dp)) {
+                            Text(socio?.nombre ?: "Sin nombre", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(socio?.tipo_servicio ?: "Servicios generales", color = Color.White.copy(alpha = 0.8f), fontSize = 16.sp)
+                        }
                     }
                 }
 
-                // ── Info perfil ──────────────────────────────────
+                // ── Descripción ──────────────────────────────────
                 item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).offset(y = (-30).dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Surface(
-                            modifier = Modifier.size(80.dp),
-                            shape = CircleShape,
-                            border = androidx.compose.foundation.BorderStroke(4.dp, fondo), // ← era Color.White
-                            shadowElevation = 4.dp
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.background(superficie)) { // ← era Color.White
-                                Text(socio?.nombre?.take(1)?.uppercase() ?: "S", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
-                            }
-                        }
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text("Sobre mi servicio", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = sobreSup)
                         Spacer(Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(socio?.nombre ?: "Sin nombre", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = sobreSup) // ← tema
-                            Spacer(Modifier.width(8.dp))
-                            Box(Modifier.size(10.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
-                        }
-                        Text(socio?.tipo_servicio ?: "Servicios generales", color = sobreSupVar, fontSize = 14.sp) // ← era Color.Gray
+                        Text(
+                            socio?.descripcion ?: "Este profesional aún no ha añadido una descripción detallada de sus servicios.",
+                            fontSize = 15.sp,
+                            color = sobreSupVar,
+                            lineHeight = 22.sp
+                        )
                     }
                 }
 
-                // ── Opiniones ────────────────────────────────────
+                // ── Galería de trabajos ──────────────────────────
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)), // naranja decorativo
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Sus clientes dicen:", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF5D4037))
-                            Spacer(Modifier.height(4.dp))
-                            Text("Los clientes están muy satisfechos con el trabajo realizado.", fontSize = 13.sp, color = Color(0xFF6D4C41))
-                            Spacer(Modifier.height(12.dp))
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    Column(modifier = Modifier.padding(vertical = 10.dp)) {
+                        Text("Galería de trabajos", fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                            color = sobreSup,
+                            modifier = Modifier.padding(start = 20.dp, bottom = 12.dp))
+                        
+                        if (fotosTrabajos.isEmpty()) {
+                            Text("No hay fotos disponibles", color = sobreSupVar, fontSize = 14.sp, modifier = Modifier.padding(start = 20.dp))
+                        } else {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Button(
-                                    onClick = {},
-                                    modifier = Modifier.height(38.dp).wrapContentWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                                ) {
-                                    Icon(Icons.Default.ThumbUp, null, Modifier.size(16.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Positivas (22)", fontSize = 12.sp)
-                                }
-                                Button(
-                                    onClick = {},
-                                    modifier = Modifier.height(38.dp).wrapContentWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336)),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                                ) {
-                                    Icon(Icons.Default.ThumbDown, null, Modifier.size(16.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Negativas (0)", fontSize = 12.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ── Galería ──────────────────────────────────────
-                item {
-                    Column(modifier = Modifier.padding(vertical = 20.dp)) {
-                        Text("Trabajos realizados", fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                            color = sobreSup,                                    // ← tema
-                            modifier = Modifier.padding(start = 20.dp, bottom = 10.dp))
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            if (fotosTrabajos.isEmpty()) {
-                                item { Text("Sin fotos", color = sobreSupVar, fontSize = 13.sp) }
-                            } else {
                                 items(fotosTrabajos) { url ->
-                                    Card(modifier = Modifier.size(140.dp, 100.dp), shape = RoundedCornerShape(8.dp)) {
-                                        AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop)
+                                    Card(
+                                        modifier = Modifier.size(160.dp, 120.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        elevation = CardDefaults.cardElevation(2.dp)
+                                    ) {
+                                        AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                                     }
                                 }
                             }
@@ -189,63 +166,70 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                     }
                 }
 
-                // ── Comentarios ──────────────────────────────────
-                item {
-                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                        Text("Escribe una opinión", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = sobreSup)
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = nuevoComentario,
-                            onValueChange = { nuevoComentario = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("¿Qué te pareció el servicio?", fontSize = 14.sp, color = sobreSupVar) },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = OrangePrimary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                                focusedContainerColor = superficie,       // ← tema
-                                unfocusedContainerColor = superficie,     // ← tema
-                                focusedTextColor = sobreSup,
-                                unfocusedTextColor = sobreSup
-                            )
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = {
-                                if (nuevoComentario.isNotBlank()) {
-                                    listaComentarios.add(0, nuevoComentario)
-                                    nuevoComentario = ""
-                                }
-                            },
-                            modifier = Modifier.align(Alignment.End),
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                        ) { Text("Publicar") }
-                        Spacer(Modifier.height(20.dp))
-                        Text("Opiniones recientes", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = sobreSup)
-                        Spacer(Modifier.height(12.dp))
-                    }
-                }
-
-                items(listaComentarios) { comentario ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-                        colors = CardDefaults.cardColors(containerColor = supVar)  // ← era Color(0xFFF9F9F9)
-                    ) {
-                        Row(modifier = Modifier.padding(12.dp)) {
-                            Box(Modifier.size(30.dp).background(sobreSupVar.copy(alpha = 0.3f), CircleShape), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Person, null, modifier = Modifier.size(18.dp), tint = superficie)
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Column {
-                                Text("Usuario", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = sobreSup)
-                                Text(comentario, fontSize = 13.sp, color = sobreSupVar) // ← era Color.DarkGray
-                            }
-                        }
-                    }
-                }
-
-                item { Spacer(Modifier.height(40.dp)) }
+                item { Spacer(Modifier.height(100.dp)) }
             }
         }
     }
+
+    if (mostrarDialogoCita) {
+        DialogoAgendarCita(
+            onDismiss = { mostrarDialogoCita = false },
+            onConfirm = { fecha, detalles ->
+                scope.launch {
+                    try {
+                        UsuarioRepository.crearCita(idCliente, socioId, fecha, detalles)
+                        Toast.makeText(context, "¡Cita solicitada con éxito!", Toast.LENGTH_LONG).show()
+                        mostrarDialogoCita = false
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun DialogoAgendarCita(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
+    var fecha by remember { mutableStateOf("") }
+    var detalles by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Agendar Cita", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text("Explica brevemente qué necesitas y para qué fecha:", fontSize = 14.sp, color = Color.Gray)
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = fecha,
+                    onValueChange = { fecha = it },
+                    label = { Text("Fecha y Hora") },
+                    placeholder = { Text("Ej: 25 de Oct, 4:00 PM") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = detalles,
+                    onValueChange = { detalles = it },
+                    label = { Text("Detalles del problema") },
+                    placeholder = { Text("Ej: Tengo una fuga en el lavabo...") },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(fecha, detalles) },
+                enabled = fecha.isNotBlank() && detalles.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+            ) { Text("Solicitar Cita") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        },
+        shape = RoundedCornerShape(20.dp)
+    )
 }

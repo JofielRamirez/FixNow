@@ -12,6 +12,14 @@ data class UsuarioPerfil(
     val es_prestador: Boolean? = false,
     @SerialName("tipo_servicio")
     val tipo_servicio: String? = null,
+    @SerialName("descripcion")
+    val descripcion: String? = null,
+    @SerialName("url_foto_perfil")
+    val urlFotoPerfil: String? = null,
     @SerialName("fecha_registro")
-    val fechaRegistro: Long? = null // Cambiado a Long para que coincida con la DB
+    val fechaRegistro: Long? = null,
+    @SerialName("url_identificacion")
+    val urlIdentificacion: String? = null,
+    @SerialName("url_antecedentes")
+    val urlAntecedentes: String? = null
 )

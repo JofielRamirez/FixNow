@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.runtime.getValue
 import com.example.fixnow.TemaApp
 import com.example.fixnow.ui.theme.*
 import com.example.fixnow.data.SupabaseClient
@@ -47,10 +46,7 @@ fun PantallaPerfil(navController: NavController) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    var mostrarDialogo by remember { mutableStateOf(false) }
-    var tipoSeleccionado by remember { mutableStateOf("") }
     var perfil by remember { mutableStateOf<UsuarioPerfil?>(null) }
-    val categorias = listOf("Carpinteria", "Cerrajeria", "Mecanica", "Plomeria", "Electricidad")
 
     val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()?.trim('"')
         ?: user?.email?.substringBefore("@") ?: "Usuario"
@@ -93,61 +89,14 @@ fun PantallaPerfil(navController: NavController) {
         }
     }
 
-    if (mostrarDialogo) {
-        AlertDialog(
-            onDismissRequest = { mostrarDialogo = false },
-            title = { Text("¿Qué servicio ofreces?", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    categorias.forEach { cat ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable { tipoSeleccionado = cat }.padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = tipoSeleccionado == cat,
-                                onClick = { tipoSeleccionado = cat },
-                                colors = RadioButtonDefaults.colors(selectedColor = OrangePrimary)
-                            )
-                            Text(cat, modifier = Modifier.padding(start = 8.dp))
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            try {
-                                val id = user?.id ?: ""
-                                if (id.isNotEmpty() && tipoSeleccionado.isNotEmpty()) {
-                                    UsuarioRepository.convertirseEnPrestador(id, tipoSeleccionado)
-                                    perfil = perfil?.copy(es_prestador = true, tipo_servicio = tipoSeleccionado)
-                                    mostrarDialogo = false
-                                    Toast.makeText(context, "¡Felicidades, ahora eres socio!", Toast.LENGTH_SHORT).show()
-                                }
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Error al actualizar", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    },
-                    enabled = tipoSeleccionado.isNotEmpty(),
-                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                ) { Text("Confirmar") }
-            },
-            dismissButton = { TextButton(onClick = { mostrarDialogo = false }) { Text("Cancelar", color = OrangePrimary) } }
-        )
-    }
-
     Scaffold(bottomBar = { BottomNavBar(navController) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(fondo)                          // ← tema
+                .background(fondo)
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // ── Header naranja (siempre naranja, no cambia) ──────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -192,13 +141,11 @@ fun PantallaPerfil(navController: NavController) {
             Spacer(modifier = Modifier.height(20.dp))
 
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-
-                // ── CUENTA ───────────────────────────────────────
                 Text("CUENTA", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = superficie),   // ← tema
+                    colors = CardDefaults.cardColors(containerColor = superficie),
                     elevation = CardDefaults.cardElevation(2.dp)
                 ) {
                     Column {
@@ -207,19 +154,20 @@ fun PantallaPerfil(navController: NavController) {
                         if (perfil?.es_prestador == true) {
                             OpcionPerfil(Icons.Default.Build, "Configurar mi Servicio", "Gestionar ${perfil?.tipo_servicio}", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) {}
                         } else {
-                            OpcionPerfil(Icons.Default.Star, "Conviértete en Socio", "Ofrece tus servicios en FixNow", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) { mostrarDialogo = true }
+                            OpcionPerfil(Icons.Default.Star, "Conviértete en Socio", "Ofrece tus servicios en FixNow", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) { 
+                                navController.navigate("registro_socio") 
+                            }
                         }
                     }
                 }
 
-                // ── HERRAMIENTAS DE SOCIO ─────────────────────────
                 if (perfil?.es_prestador == true) {
                     Spacer(modifier = Modifier.height(20.dp))
                     Text("HERRAMIENTAS DE SOCIO", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = superficie),   // ← tema
+                        colors = CardDefaults.cardColors(containerColor = superficie),
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         OpcionPerfil(Icons.Default.AddCircle, "Subir fotos de mi trabajo", "Publica tus trabajos realizados", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) {
@@ -228,13 +176,12 @@ fun PantallaPerfil(navController: NavController) {
                     }
                 }
 
-                // ── APARIENCIA ────────────────────────────────────
                 Spacer(modifier = Modifier.height(20.dp))
                 Text("APARIENCIA", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = superficie),       // ← tema
+                    colors = CardDefaults.cardColors(containerColor = superficie),
                     elevation = CardDefaults.cardElevation(2.dp)
                 ) {
                     Row(
@@ -242,7 +189,7 @@ fun PantallaPerfil(navController: NavController) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
-                            modifier = Modifier.size(42.dp).background(supVar, RoundedCornerShape(12.dp)), // ← tema
+                            modifier = Modifier.size(42.dp).background(supVar, RoundedCornerShape(12.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Star, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
@@ -263,9 +210,7 @@ fun PantallaPerfil(navController: NavController) {
                             checked = TemaApp.oscuro ?: isSystemInDarkTheme(),
                             onCheckedChange = { TemaApp.oscuro = it },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
                                 checkedTrackColor = OrangePrimary,
-                                uncheckedThumbColor = Color.White,
                                 uncheckedTrackColor = supVar
                             )
                         )
@@ -274,7 +219,6 @@ fun PantallaPerfil(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // ── CERRAR SESIÓN ─────────────────────────────────
                 OutlinedButton(
                     onClick = { scope.launch { SupabaseClient.client.auth.signOut() } },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -299,25 +243,30 @@ fun OpcionPerfil(
     subtitulo: String,
     colorTitulo: Color,
     colorSubtitulo: Color,
-    colorFondoIcono: Color,
-    iconColor: Color = Color(0xFF9E9E9E),
+    fondoIcono: Color,
+    iconColor: Color = OrangePrimary,
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(42.dp).background(colorFondoIcono, RoundedCornerShape(12.dp)), // ← tema
+            modifier = Modifier
+                .size(42.dp)
+                .background(fondoIcono, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(titulo, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = colorTitulo)       // ← tema
-            Text(subtitulo, fontSize = 12.sp, color = colorSubtitulo)                                 // ← tema
+            Text(titulo, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorTitulo)
+            Text(subtitulo, fontSize = 12.sp, color = colorSubtitulo)
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = colorSubtitulo, modifier = Modifier.size(20.dp))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = colorSubtitulo.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
     }
 }
