@@ -43,15 +43,17 @@ fun PantallaInicio(navController: NavController) {
 
     var perfil by remember { mutableStateOf<UsuarioPerfil?>(null) }
     var fotosTrabajos by remember { mutableStateOf<List<String>>(emptyList()) }
+    var cargandoPerfil by remember { mutableStateOf(true) }
 
     val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()?.trim('"')
         ?: user?.email?.substringBefore("@") ?: "Usuario"
 
     LaunchedEffect(Unit) {
-        fotosTrabajos = UsuarioRepository.obtenerFotosDeTrabajos()
         user?.id?.let { uid ->
             perfil = UsuarioRepository.obtenerSocioPorId(uid)
         }
+        fotosTrabajos = UsuarioRepository.obtenerFotosDeTrabajos()
+        cargandoPerfil = false
     }
 
     // Colores del tema
@@ -61,94 +63,100 @@ fun PantallaInicio(navController: NavController) {
     val sobreSup   = MaterialTheme.colorScheme.onSurface
     val supVar     = MaterialTheme.colorScheme.surfaceVariant
 
-    Scaffold(bottomBar = { BottomNavBar(navController, perfil?.es_prestador == true) }) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .background(fondo)
-        ) {
-            // ── Header naranja ───────────────────────────────────
-            Box(
+    if (cargandoPerfil) {
+        Box(Modifier.fillMaxSize().background(fondo), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = OrangePrimary)
+        }
+    } else {
+        Scaffold(bottomBar = { BottomNavBar(navController, perfil?.es_prestador == true) }) { padding ->
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(190.dp)
-                    .background(brush = Brush.verticalGradient(colors = listOf(OrangeDark, OrangePrimary)))
-                    .padding(20.dp)
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .background(fondo)
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Default.Place, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tecate, Baja California", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
-                        Spacer(modifier = Modifier.weight(1f))
-                        Box(
-                            modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(nombreUsuario.first().uppercaseChar().toString(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Hola, ${nombreUsuario.split(" ").first()} 👋", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    
-                    if (perfil?.es_prestador == true) {
-                        Text("Panel de Socio activo - ${perfil?.tipo_servicio}", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
-                    } else {
-                        Text("¿Qué servicio necesitas hoy?", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
-                    }
-                    
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), color = Color.White, shadowElevation = 4.dp) {
-                        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Search, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text("Buscar servicio o profesional...", color = Color(0xFFBDBDBD), fontSize = 14.sp)
-                        }
-                    }
-                }
-            }
-
-            // Si es socio, mostramos accesos de socio, si no, accesos de cliente
-            if (perfil?.es_prestador == true) {
-                SeccionAccesosSocio(navController, sobreFondo, supVar)
-            } else {
-                SeccionAccesosCliente(navController, context, sobreFondo, supVar)
-            }
-
-            // ── Trabajos recientes ───────────────────────────────
-            Column(modifier = Modifier.padding(bottom = 8.dp)) {
-                Row(modifier = Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Trabajos realizados", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo, modifier = Modifier.weight(1f))
-                    Text("Ver todos", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.height(180.dp)
+                // ── Header naranja ───────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(190.dp)
+                        .background(brush = Brush.verticalGradient(colors = listOf(OrangeDark, OrangePrimary)))
+                        .padding(20.dp)
                 ) {
-                    if (fotosTrabajos.isEmpty()) {
-                        items(4) { CardFotoSoloVista(url = null) }
-                    } else {
-                        items(fotosTrabajos) { url -> CardFotoSoloVista(url = url) }
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Place, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tecate, Baja California", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Box(
+                                modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(nombreUsuario.firstOrNull()?.uppercaseChar()?.toString() ?: "U", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Hola, ${nombreUsuario.split(" ").first()} 👋", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        
+                        if (perfil?.es_prestador == true) {
+                            Text("Panel de Socio activo - ${perfil?.tipo_servicio}", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+                        } else {
+                            Text("¿Qué servicio necesitas hoy?", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+                        }
+                        
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), color = Color.White, shadowElevation = 4.dp) {
+                            Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Search, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text("Buscar servicio o profesional...", color = Color(0xFFBDBDBD), fontSize = 14.sp)
+                            }
+                        }
                     }
                 }
-            }
 
-            // ── Socios destacados (Solo para clientes) ───────────
-            if (perfil?.es_prestador != true) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Socios destacados", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo, modifier = Modifier.weight(1f))
-                        Text("Ver todos", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { navController.navigate("servicios") })
+                // Si es socio, mostramos accesos de socio, si no, accesos de cliente
+                if (perfil?.es_prestador == true) {
+                    SeccionAccesosSocio(navController, sobreFondo, supVar)
+                } else {
+                    SeccionAccesosCliente(navController, context, sobreFondo, supVar)
+                }
+
+                // ── Trabajos recientes ───────────────────────────────
+                Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                    Row(modifier = Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Trabajos realizados", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo, modifier = Modifier.weight(1f))
+                        Text("Ver todos", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.SemiBold)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    CardSocioDestacado("Carpintería El Super", 22, "A 12 min de ti", "Carpintería", superficie, sobreSup)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    CardSocioDestacado("Plomería Tecate", 15, "A 5 min de ti", "Plomería", superficie, sobreSup)
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.height(180.dp)
+                    ) {
+                        if (fotosTrabajos.isEmpty()) {
+                            items(4) { CardFotoSoloVista(url = null) }
+                        } else {
+                            items(fotosTrabajos) { url -> CardFotoSoloVista(url = url) }
+                        }
+                    }
+                }
+
+                // ── Socios destacados (Solo para clientes) ───────────
+                if (perfil?.es_prestador != true) {
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Socios destacados", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = sobreFondo, modifier = Modifier.weight(1f))
+                            Text("Ver todos", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.clickable { navController.navigate("servicios") })
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        CardSocioDestacado("Carpintería El Super", 22, "A 12 min de ti", "Carpintería", superficie, sobreSup)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        CardSocioDestacado("Plomería Tecate", 15, "A 5 min de ti", "Plomería", superficie, sobreSup)
+                    }
                 }
             }
         }
@@ -244,7 +252,7 @@ fun CardSocioDestacado(nombre: String, resenas: Int, tiempo: String, categoria: 
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFFFF3E0)), contentAlignment = Alignment.Center) {
-                Text(nombre.first().toString(), fontWeight = FontWeight.ExtraBold, color = OrangePrimary, fontSize = 20.sp)
+                Text(nombre.firstOrNull()?.toString() ?: "", fontWeight = FontWeight.ExtraBold, color = OrangePrimary, fontSize = 20.sp)
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -261,16 +269,29 @@ fun CardSocioDestacado(nombre: String, resenas: Int, tiempo: String, categoria: 
 }
 
 @Composable
-fun BottomNavBar(navController: NavController, esSocio: Boolean = false) {
+fun BottomNavBar(navController: NavController, esSocio: Boolean? = null) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val session = SupabaseClient.client.auth.currentSessionOrNull()
+    val uid = session?.user?.id ?: ""
 
-    val items = if (esSocio) {
+    var esSocioReal by remember { mutableStateOf(esSocio ?: false) }
+
+    LaunchedEffect(esSocio, uid) {
+        if (esSocio == null && uid.isNotEmpty()) {
+            val perfil = UsuarioRepository.obtenerSocioPorId(uid)
+            esSocioReal = perfil?.es_prestador == true
+        } else if (esSocio != null) {
+            esSocioReal = esSocio
+        }
+    }
+
+    val items = if (esSocioReal) {
         listOf(
             Triple("inicio",        Icons.Default.Dashboard, "Panel"),
             Triple("socio_citas",   Icons.Default.Event,     "Citas"),
             Triple("mensajes",      Icons.Default.Chat,      "Mensajes"),
-            Triple("perfil",        Icons.Default.Person,    "Perfil")
+            Triple("socio_perfil",  Icons.Default.Person,    "Perfil")
         )
     } else {
         listOf(

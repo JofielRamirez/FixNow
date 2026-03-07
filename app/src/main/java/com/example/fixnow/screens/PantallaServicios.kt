@@ -27,8 +27,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fixnow.ui.theme.*
 import com.example.fixnow.data.AppEstadoPrefs
+import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 
 data class CategoriaExtra(
@@ -42,10 +44,13 @@ data class CategoriaExtra(
 fun PantallaServicios(navController: NavController) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val session = SupabaseClient.client.auth.currentSessionOrNull()
+    val uid = session?.user?.id ?: ""
 
     var categoriaSeleccionada by remember { mutableStateOf<String?>(null) }
     var listaSocios by remember { mutableStateOf<List<UsuarioPerfil>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
+    var esSocio by remember { mutableStateOf(false) }
 
     // Colores del tema
     val fondo       = MaterialTheme.colorScheme.background
@@ -67,7 +72,12 @@ fun PantallaServicios(navController: NavController) {
         CategoriaExtra("Mudanzas",    "Mudanzas",    Icons.Default.ShoppingCart,"Carga y traslado")
     )
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(uid) {
+        if (uid.isNotEmpty()) {
+            val perfil = UsuarioRepository.obtenerSocioPorId(uid)
+            esSocio = perfil?.es_prestador == true
+        }
+        
         val guardada = AppEstadoPrefs.obtenerUltimaCategoria(context)
         if (guardada.isNotEmpty()) {
             val cat = categorias.find { it.nombre == guardada }
@@ -80,11 +90,11 @@ fun PantallaServicios(navController: NavController) {
         }
     }
 
-    Scaffold(bottomBar = { BottomNavBar(navController) }) { padding ->
+    Scaffold(bottomBar = { BottomNavBar(navController, esSocio) }) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(fondo)                       // ← era BackgroundWhite hardcodeado
+                .background(fondo)
                 .padding(padding)
         ) {
             // Header naranja — siempre naranja
@@ -120,7 +130,7 @@ fun PantallaServicios(navController: NavController) {
 
             if (categoriaSeleccionada == null) {
                 Text("Servicios básicos", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                    color = sobreFondo,                  // ← era Color(0xFF333333)
+                    color = sobreFondo,
                     modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(modifier = Modifier.height(12.dp))
                 LazyVerticalGrid(
@@ -176,7 +186,7 @@ fun CardServicio(cat: CategoriaExtra, superficie: Color, supVar: Color, sobreFon
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(3.dp),
-        colors = CardDefaults.cardColors(containerColor = superficie),   // ← era Color.White
+        colors = CardDefaults.cardColors(containerColor = superficie),
         modifier = Modifier.aspectRatio(1f).clickable { onClick() }
     ) {
         Column(
@@ -191,7 +201,7 @@ fun CardServicio(cat: CategoriaExtra, superficie: Color, supVar: Color, sobreFon
                 Icon(cat.icon, null, modifier = Modifier.size(24.dp), tint = OrangePrimary)
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(cat.nombre, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = sobreFondo) // ← era Color(0xFF333333)
+            Text(cat.nombre, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = sobreFondo)
         }
     }
 }
@@ -201,7 +211,7 @@ fun CardSocioSimple(socio: UsuarioPerfil, superficie: Color, sobreSup: Color, on
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = superficie),   // ← era Color.White
+        colors = CardDefaults.cardColors(containerColor = superficie),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -213,8 +223,8 @@ fun CardSocioSimple(socio: UsuarioPerfil, superficie: Color, sobreSup: Color, on
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(socio.nombre ?: "Socio", fontWeight = FontWeight.Bold, color = sobreSup)          // ← era Color(0xFF333333)
-                Text(socio.tipo_servicio ?: "Servicio general", fontSize = 12.sp, color = sobreSup.copy(alpha = 0.6f)) // ← era Color.Gray
+                Text(socio.nombre ?: "Socio", fontWeight = FontWeight.Bold, color = sobreSup)
+                Text(socio.tipo_servicio ?: "Servicio general", fontSize = 12.sp, color = sobreSup.copy(alpha = 0.6f))
             }
         }
     }

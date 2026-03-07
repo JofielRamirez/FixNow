@@ -35,6 +35,7 @@ fun PantallaListaChats(navController: NavController) {
     var listaSociosConChat by remember { mutableStateOf<List<UsuarioPerfil>>(emptyList()) }
     var cargando by remember { mutableStateOf(true) }
     var textoBusqueda by remember { mutableStateOf("") }
+    var esSocio by remember { mutableStateOf(false) }
 
     // Colores del tema
     val fondo      = MaterialTheme.colorScheme.background
@@ -43,12 +44,17 @@ fun PantallaListaChats(navController: NavController) {
     val sobreSup   = MaterialTheme.colorScheme.onSurface
     val sobreSupVar = MaterialTheme.colorScheme.onSurfaceVariant
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(miId) {
         cargando = true
-        val ids = ChatRepository.obtenerConversaciones(miId)
-        val perfiles = mutableListOf<UsuarioPerfil>()
-        for (id in ids) { UsuarioRepository.obtenerSocioPorId(id)?.let { perfiles.add(it) } }
-        listaSociosConChat = perfiles
+        if (miId.isNotEmpty()) {
+            val perfil = UsuarioRepository.obtenerSocioPorId(miId)
+            esSocio = perfil?.es_prestador == true
+            
+            val ids = ChatRepository.obtenerConversaciones(miId)
+            val perfiles = mutableListOf<UsuarioPerfil>()
+            for (id in ids) { UsuarioRepository.obtenerSocioPorId(id)?.let { perfiles.add(it) } }
+            listaSociosConChat = perfiles
+        }
         cargando = false
     }
 
@@ -57,18 +63,18 @@ fun PantallaListaChats(navController: NavController) {
             TopAppBar(
                 title = { Text("Chats", fontWeight = FontWeight.ExtraBold, fontSize = 24.sp) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = superficie,          // ← era Color.White
-                    titleContentColor = sobreSup          // ← nuevo
+                    containerColor = superficie,
+                    titleContentColor = sobreSup
                 )
             )
         },
-        bottomBar = { BottomNavBar(navController) }
+        bottomBar = { BottomNavBar(navController, esSocio) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(fondo)                        // ← era Color.White
+                .background(fondo)
         ) {
             OutlinedTextField(
                 value = textoBusqueda,
@@ -78,12 +84,12 @@ fun PantallaListaChats(navController: NavController) {
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = sobreSupVar) },
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = supVar,       // ← era Color(0xFFF5F5F5)
-                    unfocusedContainerColor = supVar,     // ← era Color(0xFFF5F5F5)
+                    focusedContainerColor = supVar,
+                    unfocusedContainerColor = supVar,
                     focusedBorderColor = Color.Transparent,
                     unfocusedBorderColor = Color.Transparent,
-                    focusedTextColor = sobreSup,          // ← nuevo
-                    unfocusedTextColor = sobreSup         // ← nuevo
+                    focusedTextColor = sobreSup,
+                    unfocusedTextColor = sobreSup
                 ),
                 singleLine = true
             )
@@ -126,29 +132,29 @@ fun ItemChatMessenger(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(superficie)                      // ← era implícito Color.White
+            .background(superficie)
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(60.dp).background(Color(0xFFFFF3E0), CircleShape), // naranja decorativo — no cambia
+            modifier = Modifier.size(60.dp).background(Color(0xFFFFF3E0), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(socio.nombre?.take(1)?.uppercase() ?: "S", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
             Box(
                 modifier = Modifier
                     .size(14.dp).align(Alignment.BottomEnd).clip(CircleShape)
-                    .background(superficie)              // ← era Color.White
+                    .background(superficie)
                     .padding(2.dp).clip(CircleShape)
                     .background(Color(0xFF4CAF50))
             )
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(socio.nombre ?: "Socio", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = sobreSup)       // ← era Color(0xFF222222)
-            Text("Toca para chatear con el socio", color = sobreSupVar, fontSize = 14.sp, maxLines = 1)           // ← era Color.Gray
+            Text(socio.nombre ?: "Socio", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = sobreSup)
+            Text("Toca para chatear", color = sobreSupVar, fontSize = 14.sp, maxLines = 1)
         }
-        Text("12:45", color = sobreSupVar, fontSize = 12.sp)                                                       // ← era Color.Gray
+        Text("Hoy", color = sobreSupVar, fontSize = 12.sp)
     }
 }

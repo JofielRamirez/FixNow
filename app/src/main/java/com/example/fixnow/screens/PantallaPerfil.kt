@@ -47,6 +47,7 @@ fun PantallaPerfil(navController: NavController) {
     val context = LocalContext.current
 
     var perfil by remember { mutableStateOf<UsuarioPerfil?>(null) }
+    var cargando by remember { mutableStateOf(true) }
 
     val nombreUsuario = user?.userMetadata?.get("nombre")?.toString()?.trim('"')
         ?: user?.email?.substringBefore("@") ?: "Usuario"
@@ -80,157 +81,163 @@ fun PantallaPerfil(navController: NavController) {
     LaunchedEffect(navBackStackEntry) {
         user?.id?.let { uid ->
             try {
-                val uidLimpio = uid.replace("\"", "").trim()
-                val datos = SupabaseClient.client.postgrest["Usuarios"]
-                    .select { filter { eq("id", uidLimpio) } }
-                    .decodeSingleOrNull<UsuarioPerfil>()
+                val datos = UsuarioRepository.obtenerSocioPorId(uid)
                 if (datos != null) perfil = datos
             } catch (e: Exception) { Log.e("PERFIL", "Error: ${e.message}") }
-        }
+            finally { cargando = false }
+        } ?: run { cargando = false }
     }
 
-    Scaffold(bottomBar = { BottomNavBar(navController) }) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(fondo)
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Box(
+    Scaffold(bottomBar = { BottomNavBar(navController, perfil?.es_prestador == true) }) { padding ->
+        if (cargando) {
+            Box(Modifier.fillMaxSize().background(fondo), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = OrangePrimary)
+            }
+        } else {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .background(brush = Brush.verticalGradient(colors = listOf(OrangeDark, OrangePrimary)))
+                    .fillMaxSize()
+                    .background(fondo)
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .background(brush = Brush.verticalGradient(colors = listOf(OrangeDark, OrangePrimary)))
                 ) {
-                    Box(
-                        modifier = Modifier.size(88.dp).clip(CircleShape).background(Color.White),
-                        contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
-                            modifier = Modifier.size(80.dp).clip(CircleShape).background(Color(0xFFFFF3E0)),
+                            modifier = Modifier.size(88.dp).clip(CircleShape).background(Color.White),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(inicial.toString(), fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, color = OrangePrimary)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(nombreUsuario, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    if (perfil?.es_prestador == true) {
-                        Surface(color = Color.White.copy(alpha = 0.25f), shape = RoundedCornerShape(20.dp)) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Box(
+                                modifier = Modifier.size(80.dp).clip(CircleShape).background(Color(0xFFFFF3E0)),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF69F0AE), modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Socio · ${perfil?.tipo_servicio}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text(inicial.toString(), fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, color = OrangePrimary)
                             }
                         }
-                    } else {
-                        Text(emailUsuario, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                Text("CUENTA", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = superficie),
-                    elevation = CardDefaults.cardElevation(2.dp)
-                ) {
-                    Column {
-                        OpcionPerfil(Icons.Default.Settings, "Ajustes", "Notificaciones, idioma", sobreSup, sobreSupVar, supVar) {}
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = divider)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(nombreUsuario, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
                         if (perfil?.es_prestador == true) {
-                            OpcionPerfil(Icons.Default.Build, "Configurar mi Servicio", "Gestionar ${perfil?.tipo_servicio}", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) {}
-                        } else {
-                            OpcionPerfil(Icons.Default.Star, "Conviértete en Socio", "Ofrece tus servicios en FixNow", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) { 
-                                navController.navigate("registro_socio") 
+                            Surface(color = Color.White.copy(alpha = 0.25f), shape = RoundedCornerShape(20.dp)) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF69F0AE), modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Socio · ${perfil?.tipo_servicio}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
                             }
+                        } else {
+                            Text(emailUsuario, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
                         }
                     }
                 }
 
-                if (perfil?.es_prestador == true) {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text("HERRAMIENTAS DE SOCIO", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    Text("CUENTA", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = superficie),
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
-                        OpcionPerfil(Icons.Default.AddCircle, "Subir fotos de mi trabajo", "Publica tus trabajos realizados", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) {
-                            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        Column {
+                            OpcionPerfil(Icons.Default.Settings, "Ajustes", "Notificaciones, idioma", sobreSup, sobreSupVar, supVar) {}
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = divider)
+                            if (perfil?.es_prestador == true) {
+                                OpcionPerfil(Icons.Default.Build, "Configurar mi Servicio", "Gestionar descripción y fotos", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) {
+                                    navController.navigate("socio_perfil")
+                                }
+                            } else {
+                                OpcionPerfil(Icons.Default.Star, "Conviértete en Socio", "Ofrece tus servicios en FixNow", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) { 
+                                    navController.navigate("registro_socio") 
+                                }
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(20.dp))
-                Text("APARIENCIA", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = superficie),
-                    elevation = CardDefaults.cardElevation(2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier.size(42.dp).background(supVar, RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
+                    if (perfil?.es_prestador == true) {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Text("HERRAMIENTAS DE SOCIO", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = superficie),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
-                            Icon(Icons.Default.Star, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
+                            OpcionPerfil(Icons.Default.AddCircle, "Subir fotos de mi trabajo", "Publica tus trabajos realizados", sobreSup, sobreSupVar, supVar, iconColor = OrangePrimary) {
+                                pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
                         }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Tema oscuro", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = sobreSup)
-                            Text(
-                                when (TemaApp.oscuro) {
-                                    true  -> "Activado manualmente"
-                                    false -> "Desactivado manualmente"
-                                    null  -> "Según el sistema"
-                                },
-                                fontSize = 12.sp, color = sobreSupVar
-                            )
-                        }
-                        Switch(
-                            checked = TemaApp.oscuro ?: isSystemInDarkTheme(),
-                            onCheckedChange = { TemaApp.oscuro = it },
-                            colors = SwitchDefaults.colors(
-                                checkedTrackColor = OrangePrimary,
-                                uncheckedTrackColor = supVar
-                            )
-                        )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text("APARIENCIA", fontSize = 11.sp, color = sobreSupVar, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = superficie),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier.size(42.dp).background(supVar, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Star, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Tema oscuro", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = sobreSup)
+                                Text(
+                                    when (TemaApp.oscuro) {
+                                        true  -> "Activado manualmente"
+                                        false -> "Desactivado manualmente"
+                                        null  -> "Según el sistema"
+                                    },
+                                    fontSize = 12.sp, color = sobreSupVar
+                                )
+                            }
+                            Switch(
+                                checked = TemaApp.oscuro ?: isSystemInDarkTheme(),
+                                onCheckedChange = { TemaApp.oscuro = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedTrackColor = OrangePrimary,
+                                    uncheckedTrackColor = supVar
+                                )
+                            )
+                        }
+                    }
 
-                OutlinedButton(
-                    onClick = { scope.launch { SupabaseClient.client.auth.signOut() } },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorError),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, ColorError.copy(alpha = 0.4f))
-                ) {
-                    Icon(Icons.Default.ExitToApp, null, tint = ColorError, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Cerrar sesión", color = ColorError, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    OutlinedButton(
+                        onClick = { scope.launch { SupabaseClient.client.auth.signOut() } },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorError),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, ColorError.copy(alpha = 0.4f))
+                    ) {
+                        Icon(Icons.Default.ExitToApp, null, tint = ColorError, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Cerrar sesión", color = ColorError, fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
-                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
