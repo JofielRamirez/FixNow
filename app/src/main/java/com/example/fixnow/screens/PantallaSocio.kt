@@ -1,6 +1,5 @@
 package com.example.fixnow.screens
 
-import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,7 +32,6 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.fixnow.data.Cita
 import com.example.fixnow.data.SupabaseClient
-import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
 import com.example.fixnow.ui.theme.OrangePrimary
 import io.github.jan.supabase.auth.auth
@@ -46,6 +45,7 @@ fun PantallaSocioCitas(navController: NavController) {
     val scope = rememberCoroutineScope()
     var citas by remember { mutableStateOf<List<Cita>>(emptyList()) }
     var cargando by remember { mutableStateOf(true) }
+    var tabSeleccionada by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(uid) {
         if (uid.isNotEmpty()) {
@@ -57,26 +57,78 @@ fun PantallaSocioCitas(navController: NavController) {
     Scaffold(
         bottomBar = { BottomNavBar(navController, esSocio = true) },
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("Citas Pendientes", fontWeight = FontWeight.Bold) })
+            CenterAlignedTopAppBar(title = { Text("Gestión de Citas", fontWeight = FontWeight.Bold) })
         }
     ) { padding ->
-        if (cargando) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = OrangePrimary)
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            TabRow(
+                selectedTabIndex = tabSeleccionada,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = OrangePrimary,
+                indicator = { tabPositions ->
+                    if (tabSeleccionada < tabPositions.size) {
+                        with(TabRowDefaults) {
+                            SecondaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[tabSeleccionada]),
+                                color = OrangePrimary
+                            )
+                        }
+                    }
+                }
+            ) {
+                Tab(
+                    selected = tabSeleccionada == 0,
+                    onClick = { tabSeleccionada = 0 },
+                    text = { Text("Solicitudes") }
+                )
+                Tab(
+                    selected = tabSeleccionada == 1,
+                    onClick = { tabSeleccionada = 1 },
+                    text = { Text("Aceptadas") }
+                )
             }
-        } else if (citas.isEmpty()) {
-            Column(modifier = Modifier.padding(padding).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Icon(Icons.Default.EventNote, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("No tienes citas pendientes por ahora", color = Color.Gray)
-            }
-        } else {
-            LazyColumn(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(citas) { cita ->
-                    CardCita(cita) { nuevoEstado ->
-                        scope.launch {
-                            UsuarioRepository.actualizarEstadoCita(cita.id ?: "", nuevoEstado)
-                            citas = UsuarioRepository.obtenerCitasSocio(uid)
+
+            if (cargando) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = OrangePrimary)
+                }
+            } else {
+                val citasFiltradas = when (tabSeleccionada) {
+                    0 -> citas.filter { it.estado == "pendiente" }
+                    1 -> citas.filter { it.estado == "aceptada" }
+                    else -> emptyList()
+                }
+
+                if (citasFiltradas.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            if (tabSeleccionada == 0) Icons.AutoMirrored.Filled.EventNote else Icons.Default.TaskAlt,
+                            null,
+                            modifier = Modifier.size(64.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            if (tabSeleccionada == 0) "No hay solicitudes pendientes" else "No tienes citas aceptadas",
+                            color = Color.Gray
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(citasFiltradas) { cita ->
+                            CardCita(cita) { nuevoEstado ->
+                                scope.launch {
+                                    UsuarioRepository.actualizarEstadoCita(cita.id ?: "", nuevoEstado)
+                                    citas = UsuarioRepository.obtenerCitasSocio(uid)
+                                }
+                            }
                         }
                     }
                 }
@@ -99,30 +151,70 @@ fun CardCita(cita: Cita, onStatusChange: (String) -> Unit) {
                 Text("Cliente ID: ${cita.idCliente.take(8)}...", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.weight(1f))
                 Surface(
-                    color = when(cita.estado) {
+                    color = when (cita.estado) {
                         "pendiente" -> Color(0xFFFFB74D)
-                        "aceptada" -> Color(0xFF81C784)
+                        "aceptada" -> Color(0xFF4CAF50)
+                        "completada" -> Color(0xFF2196F3)
+                        "cancelada" -> Color(0xFFF44336)
                         else -> Color.LightGray
                     },
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(cita.estado.uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        cita.estado.uppercase(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        fontSize = 10.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Fecha: ${cita.fecha}", fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Fecha: ${cita.fecha}", fontSize = 14.sp)
+            }
             if (!cita.detalles.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text("Detalles: ${cita.detalles}", fontSize = 14.sp, color = Color.Gray)
             }
+            
             Spacer(modifier = Modifier.height(12.dp))
-            if (cita.estado == "pendiente") {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { onStatusChange("cancelada") }) {
-                        Text("Rechazar", color = Color.Red)
+            
+            when (cita.estado) {
+                "pendiente" -> {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { onStatusChange("cancelada") }) {
+                            Text("Rechazar", color = Color.Red)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { onStatusChange("aceptada") },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                        ) {
+                            Text("Aceptar")
+                        }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { onStatusChange("aceptada") }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
-                        Text("Aceptar")
+                }
+                "aceptada" -> {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        OutlinedButton(
+                            onClick = { onStatusChange("cancelada") },
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
+                        ) {
+                            Text("Cancelar Cita")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { onStatusChange("completada") },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+                        ) {
+                            Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Completar")
+                        }
                     }
                 }
             }
@@ -133,16 +225,83 @@ fun CardCita(cita: Cita, onStatusChange: (String) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaSocioHistorial(navController: NavController) {
+    val session = SupabaseClient.client.auth.currentSessionOrNull()
+    val uid = session?.user?.id ?: ""
+    var citas by remember { mutableStateOf<List<Cita>>(emptyList()) }
+    var cargando by remember { mutableStateOf(true) }
+
+    LaunchedEffect(uid) {
+        if (uid.isNotEmpty()) {
+            citas = UsuarioRepository.obtenerCitasSocio(uid)
+                .filter { it.estado == "completada" || it.estado == "cancelada" }
+                .sortedByDescending { it.id }
+            cargando = false
+        }
+    }
+
     Scaffold(
         bottomBar = { BottomNavBar(navController, esSocio = true) },
         topBar = {
             CenterAlignedTopAppBar(title = { Text("Historial de Trabajos", fontWeight = FontWeight.Bold) })
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(Icons.Default.History, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Aún no has completado trabajos", color = Color.Gray)
+        if (cargando) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = OrangePrimary)
+            }
+        } else if (citas.isEmpty()) {
+            Column(
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(Icons.Default.History, null, modifier = Modifier.size(64.dp), tint = Color.Gray)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("No hay historial de trabajos", color = Color.Gray)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(citas) { cita ->
+                    CardCitaHistorial(cita)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CardCitaHistorial(cita: Cita) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Trabajo #${cita.id?.takeLast(4)}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(modifier = Modifier.weight(1f))
+                Surface(
+                    color = if (cita.estado == "completada") Color(0xFFE3F2FD) else Color(0xFFFFEBEE),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        cita.estado.uppercase(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        fontSize = 10.sp,
+                        color = if (cita.estado == "completada") Color(0xFF1976D2) else Color(0xFFD32F2F),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Fecha: ${cita.fecha}", fontSize = 14.sp)
+            Text("Cliente: ${cita.idCliente.take(8)}...", fontSize = 14.sp, color = Color.Gray)
+            if (!cita.detalles.isNullOrEmpty()) {
+                Text("Detalles: ${cita.detalles}", fontSize = 13.sp, color = Color.Gray)
+            }
         }
     }
 }
@@ -213,7 +372,14 @@ fun PantallaSocioPerfil(navController: NavController) {
     Scaffold(
         bottomBar = { BottomNavBar(navController, esSocio = true) },
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("Personalizar Perfil", fontWeight = FontWeight.Bold) })
+            CenterAlignedTopAppBar(
+                title = { Text("Personalizar Perfil", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigate("perfil") }) {
+                        Icon(Icons.Default.Settings, null)
+                    }
+                }
+            )
         }
     ) { padding ->
         if (cargando) {
@@ -296,6 +462,12 @@ fun PantallaSocioPerfil(navController: NavController) {
                     } else {
                         Text("Guardar Cambios", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                TextButton(onClick = { scope.launch { SupabaseClient.client.auth.signOut() } }) {
+                    Text("Cerrar Sesión", color = Color.Red)
                 }
             }
         }

@@ -2,6 +2,7 @@ package com.example.fixnow.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -31,6 +33,8 @@ import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,10 +49,8 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
     var cargando by remember { mutableStateOf(true) }
     var mostrarDialogoCita by remember { mutableStateOf(false) }
 
-    // Colores del tema
     val fondo       = MaterialTheme.colorScheme.background
     val superficie  = MaterialTheme.colorScheme.surface
-    val supVar      = MaterialTheme.colorScheme.surfaceVariant
     val sobreSup    = MaterialTheme.colorScheme.onSurface
     val sobreSupVar = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -98,7 +100,6 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                     .background(fondo)
                     .padding(paddingValues)
             ) {
-                // ── Header con foto de perfil o trabajo ──────────────────────────────
                 item {
                     Box(modifier = Modifier.fillMaxWidth().height(250.dp)) {
                         AsyncImage(
@@ -124,7 +125,6 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                     }
                 }
 
-                // ── Descripción ──────────────────────────────────
                 item {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text("Sobre mi servicio", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = sobreSup)
@@ -138,7 +138,6 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                     }
                 }
 
-                // ── Galería de trabajos ──────────────────────────
                 item {
                     Column(modifier = Modifier.padding(vertical = 10.dp)) {
                         Text("Galería de trabajos", fontWeight = FontWeight.Bold, fontSize = 18.sp,
@@ -172,7 +171,7 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
     }
 
     if (mostrarDialogoCita) {
-        DialogoAgendarCita(
+        DialogoAgendarCitaVisual(
             onDismiss = { mostrarDialogoCita = false },
             onConfirm = { fecha, detalles ->
                 scope.launch {
@@ -189,47 +188,84 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DialogoAgendarCita(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
-    var fecha by remember { mutableStateOf("") }
+fun DialogoAgendarCitaVisual(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
+    var step by remember { mutableStateOf(1) }
+    val datePickerState = rememberDatePickerState()
+    val timePickerState = rememberTimePickerState()
     var detalles by remember { mutableStateOf("") }
+    
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Agendar Cita", fontWeight = FontWeight.Bold) },
+        title = { 
+            Text(
+                when(step) {
+                    1 -> "Selecciona la Fecha"
+                    2 -> "Selecciona la Hora"
+                    else -> "Detalles de la Cita"
+                }, 
+                fontWeight = FontWeight.Bold 
+            ) 
+        },
         text = {
-            Column {
-                Text("Explica brevemente qué necesitas y para qué fecha:", fontSize = 14.sp, color = Color.Gray)
-                Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = fecha,
-                    onValueChange = { fecha = it },
-                    label = { Text("Fecha y Hora") },
-                    placeholder = { Text("Ej: 25 de Oct, 4:00 PM") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = detalles,
-                    onValueChange = { detalles = it },
-                    label = { Text("Detalles del problema") },
-                    placeholder = { Text("Ej: Tengo una fuga en el lavabo...") },
-                    modifier = Modifier.fillMaxWidth().height(100.dp),
-                    shape = RoundedCornerShape(12.dp)
-                )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                when(step) {
+                    1 -> {
+                        DatePicker(
+                            state = datePickerState,
+                            showModeToggle = false,
+                            modifier = Modifier.scale(0.8f)
+                        )
+                    }
+                    2 -> {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            TimePicker(state = timePickerState)
+                        }
+                    }
+                    3 -> {
+                        OutlinedTextField(
+                            value = detalles,
+                            onValueChange = { detalles = it },
+                            label = { Text("¿Qué necesitas exactamente?") },
+                            placeholder = { Text("Ej: Instalación de 3 lámparas...") },
+                            modifier = Modifier.fillMaxWidth().height(120.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(fecha, detalles) },
-                enabled = fecha.isNotBlank() && detalles.isNotBlank(),
+                onClick = {
+                    if (step < 3) {
+                        step++
+                    } else {
+                        val fechaStr = datePickerState.selectedDateMillis?.let { 
+                            dateFormatter.format(Date(it)) 
+                        } ?: ""
+                        val horaStr = String.format("%02d:%02d", timePickerState.hour, timePickerState.minute)
+                        onConfirm("$fechaStr $horaStr", detalles)
+                    }
+                },
+                enabled = when(step) {
+                    1 -> datePickerState.selectedDateMillis != null
+                    3 -> detalles.isNotBlank()
+                    else -> true
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-            ) { Text("Solicitar Cita") }
+            ) {
+                Text(if (step < 3) "Siguiente" else "Confirmar Cita")
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = { if (step > 1) step-- else onDismiss() }) {
+                Text(if (step > 1) "Atrás" else "Cancelar")
+            }
         },
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(24.dp)
     )
 }
