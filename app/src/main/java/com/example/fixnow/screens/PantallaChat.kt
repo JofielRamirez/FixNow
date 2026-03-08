@@ -47,6 +47,9 @@ fun PantallaChat(navController: NavController, socioId: String, socioNombre: Str
     val bordeInactivo = MaterialTheme.colorScheme.outlineVariant
 
     LaunchedEffect(socioId) {
+        // Marcar como leídos al entrar
+        ChatRepository.marcarComoLeidos(miId, socioId)
+        
         val historial = ChatRepository.obtenerMensajesHistoricos(miId, socioId)
         listaChatUI.clear()
         listaChatUI.addAll(historial)
@@ -60,6 +63,9 @@ fun PantallaChat(navController: NavController, socioId: String, socioNombre: Str
                 listaChatUI.removeAll { it.id.startsWith("temp_") && it.contenido in contenidosNuevos }
                 listaChatUI.addAll(nuevos)
                 listaChatUI.sortBy { it.createdAt }
+                
+                // Si llegan mensajes nuevos mientras estoy en el chat, marcarlos como leídos
+                ChatRepository.marcarComoLeidos(miId, socioId)
             }
         }
     }
@@ -102,7 +108,7 @@ fun PantallaChat(navController: NavController, socioId: String, socioNombre: Str
         },
         bottomBar = {
             Surface(
-                color = superficie,           // ← era Color.White
+                color = superficie,
                 shadowElevation = 8.dp
             ) {
                 Row(
@@ -121,12 +127,12 @@ fun PantallaChat(navController: NavController, socioId: String, socioNombre: Str
                         shape = RoundedCornerShape(24.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = OrangePrimary,
-                            unfocusedBorderColor = bordeInactivo,     // ← era Color(0xFFE0E0E0)
-                            focusedContainerColor = supVar,           // ← era Color(0xFFFAFAFA)
-                            unfocusedContainerColor = supVar,         // ← era Color(0xFFFAFAFA)
+                            unfocusedBorderColor = bordeInactivo,
+                            focusedContainerColor = supVar,
+                            unfocusedContainerColor = supVar,
                             cursorColor = OrangePrimary,
-                            focusedTextColor = sobreSup,              // ← nuevo
-                            unfocusedTextColor = sobreSup             // ← nuevo
+                            focusedTextColor = sobreSup,
+                            unfocusedTextColor = sobreSup
                         ),
                         maxLines = 3
                     )
@@ -172,7 +178,7 @@ fun PantallaChat(navController: NavController, socioId: String, socioNombre: Str
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(fondo)            // ← era Color(0xFFF5F5F5)
+                .background(fondo)
         ) {
             if (cargando && listaChatUI.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -218,13 +224,13 @@ fun BurbujaMensaje(mensaje: MensajeDB, miId: String) {
                     if (esMio)
                         Brush.linearGradient(colors = listOf(OrangeDark, OrangePrimary))
                     else
-                        Brush.linearGradient(colors = listOf(superficie, superficie)) // ← era Color.White
+                        Brush.linearGradient(colors = listOf(superficie, superficie))
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Text(
                 text = mensaje.contenido,
-                color = if (esMio) Color.White else sobreSup,  // ← era TextPrimary hardcodeado
+                color = if (esMio) Color.White else sobreSup,
                 fontSize = 15.sp,
                 lineHeight = 21.sp
             )

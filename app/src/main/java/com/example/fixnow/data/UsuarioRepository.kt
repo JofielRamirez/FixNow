@@ -16,7 +16,11 @@ data class Cita(
     val idSocio: String,
     val fecha: String, 
     val estado: String = "pendiente",
-    val detalles: String? = null
+    val detalles: String? = null,
+    @SerialName("lat_cliente")
+    val latCliente: Double? = null,
+    @SerialName("lon_cliente")
+    val lonCliente: Double? = null
 )
 
 object UsuarioRepository {
@@ -64,6 +68,37 @@ object UsuarioRepository {
         }
     }
 
+    suspend fun actualizarUbicacion(uid: String, lat: Double, lon: Double) {
+        val uidLimpio = uid.replace("\"", "").trim()
+        try {
+            client.postgrest["Usuarios"].update(
+                {
+                    set("latitud", lat)
+                    set("longitud", lon)
+                }
+            ) {
+                filter { eq("id", uidLimpio) }
+            }
+        } catch (e: Exception) {
+            Log.e("REPO", "Error actualizando ubicación: ${e.message}")
+        }
+    }
+
+    suspend fun actualizarDisponibilidad(uid: String, disponible: Boolean) {
+        val uidLimpio = uid.replace("\"", "").trim()
+        try {
+            client.postgrest["Usuarios"].update(
+                {
+                    set("disponible", disponible)
+                }
+            ) {
+                filter { eq("id", uidLimpio) }
+            }
+        } catch (e: Exception) {
+            Log.e("REPO", "Error actualizando disponibilidad: ${e.message}")
+        }
+    }
+
     suspend fun subirFotoPerfil(uid: String, data: ByteArray): String {
         val fileName = "$uid/perfil_${System.currentTimeMillis()}.jpg"
         val bucket = client.storage.from("fotos_perfiles")
@@ -100,6 +135,21 @@ object UsuarioRepository {
             respuesta
         } catch (e: Exception) {
             Log.e("REPO_ERROR", "Error al obtener socios: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun obtenerSociosDisponiblesPorCategoria(categoria: String): List<UsuarioPerfil> {
+        return try {
+            client.postgrest["Usuarios"].select {
+                filter {
+                    eq("es_prestador", true)
+                    eq("disponible", true)
+                    ilike("tipo_servicio", "%$categoria%") 
+                }
+            }.decodeList<UsuarioPerfil>()
+        } catch (e: Exception) {
+            Log.e("REPO", "Error al obtener socios disponibles: ${e.message}")
             emptyList()
         }
     }
@@ -144,15 +194,36 @@ object UsuarioRepository {
     }
 
     // Métodos para Citas
-    suspend fun crearCita(idCliente: String, idSocio: String, fecha: String, detalles: String) {
+    suspend fun crearCita(idCliente: String, idSocio: String, fecha: String, detalles: String, lat: Double? = null, lon: Double? = null): Cita? {
         val nuevaCita = Cita(
             idCliente = idCliente,
             idSocio = idSocio,
             fecha = fecha,
             estado = "pendiente",
-            detalles = detalles
+            detalles = detalles,
+            latCliente = lat,
+            lonCliente = lon
         )
-        client.postgrest["citas"].insert(nuevaCita)
+        return try {
+            val response = client.postgrest["citas"].insert(nuevaCita) {
+                select()
+            }
+            response.decodeSingleOrNull<Cita>()
+        } catch (e: Exception) {
+            Log.e("REPO", "Error creando cita: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun obtenerCitaPorId(citaId: String): Cita? {
+        return try {
+            client.postgrest["citas"].select {
+                filter { eq("id", citaId) }
+            }.decodeSingleOrNull<Cita>()
+        } catch (e: Exception) {
+            Log.e("REPO", "Error obtener cita: ${e.message}")
+            null
+        }
     }
 
     suspend fun obtenerCitasSocio(uid: String): List<Cita> {
@@ -161,7 +232,18 @@ object UsuarioRepository {
                 filter { eq("id_socio", uid) }
             }.decodeList<Cita>()
         } catch (e: Exception) {
-            Log.e("REPO", "Error citas: ${e.message}")
+            Log.e("REPO", "Error citas socio: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun obtenerCitasCliente(uid: String): List<Cita> {
+        return try {
+            client.postgrest["citas"].select {
+                filter { eq("id_cliente", uid) }
+            }.decodeList<Cita>()
+        } catch (e: Exception) {
+            Log.e("REPO", "Error citas cliente: ${e.message}")
             emptyList()
         }
     }

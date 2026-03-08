@@ -40,7 +40,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 @Serializable
-data class Cita(
+data class CitaPrueba(
     val cliente_nombre: String,
     val servicio: String,
     val fecha: String,

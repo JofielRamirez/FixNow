@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.screens.*
 import com.example.fixnow.ui.theme.FixNowTheme
+import com.example.fixnow.utils.NotificationHelper
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -31,6 +32,9 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         Log.d("CICLO_VIDA", "onCreate")
         SupabaseClient.client.handleDeeplinks(intent)
+        
+        // Inicializar canales de notificación
+        NotificationHelper.crearCanales(this)
 
         setContent {
             val sistemaOscuro = isSystemInDarkTheme()
@@ -95,6 +99,9 @@ fun AppNavigation() {
 
         composable("detalle_socio/{socioId}") { backStackEntry ->
             PantallaDetalleSocio(navController, backStackEntry.arguments?.getString("socioId") ?: "")
+        }
+        composable("seguimiento/{citaId}") { backStackEntry ->
+            PantallaSeguimientoSocio(navController, backStackEntry.arguments?.getString("citaId") ?: "")
         }
         composable("chat/{socioId}/{nombre}") { backStackEntry ->
             PantallaChat(

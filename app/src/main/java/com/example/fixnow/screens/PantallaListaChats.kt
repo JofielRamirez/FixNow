@@ -23,10 +23,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.fixnow.ui.theme.*
 import com.example.fixnow.data.ChatRepository
+import com.example.fixnow.data.MensajeDB
 import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
 import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +39,7 @@ fun PantallaListaChats(navController: NavController) {
     var cargando by remember { mutableStateOf(true) }
     var textoBusqueda by remember { mutableStateOf("") }
     var esSocio by remember { mutableStateOf(false) }
+    val noLeidosMap = remember { mutableStateMapOf<String, Int>() }
 
     // Colores del tema
     val fondo      = MaterialTheme.colorScheme.background
@@ -52,8 +56,20 @@ fun PantallaListaChats(navController: NavController) {
             
             val ids = ChatRepository.obtenerConversaciones(miId)
             val perfiles = mutableListOf<UsuarioPerfil>()
-            for (id in ids) { UsuarioRepository.obtenerSocioPorId(id)?.let { perfiles.add(it) } }
+            for (id in ids) { 
+                UsuarioRepository.obtenerSocioPorId(id)?.let { perfiles.add(it) } 
+            }
             listaSociosConChat = perfiles
+
+            // Escuchar mensajes no leídos para cada conversación
+            ids.forEach { otroId ->
+                launch {
+                    ChatRepository.escucharMensajes(miId, otroId).collect { mensajes ->
+                        val count = mensajes.count { it.idReceptor == miId && !it.leido }
+                        noLeidosMap[otroId] = count
+                    }
+                }
+            }
         }
         cargando = false
     }
@@ -111,7 +127,8 @@ fun PantallaListaChats(navController: NavController) {
             } else {
                 LazyColumn {
                     items(listaSociosConChat.filter { it.nombre?.contains(textoBusqueda, true) == true }) { socio ->
-                        ItemChatMessenger(socio, superficie, sobreSup, sobreSupVar) {
+                        val noLeidos = noLeidosMap[socio.id] ?: 0
+                        ItemChatMessenger(socio, noLeidos, superficie, sobreSup, sobreSupVar) {
                             navController.navigate("chat/${socio.id}/${socio.nombre}")
                         }
                     }
@@ -124,6 +141,7 @@ fun PantallaListaChats(navController: NavController) {
 @Composable
 fun ItemChatMessenger(
     socio: UsuarioPerfil,
+    noLeidos: Int,
     superficie: Color,
     sobreSup: Color,
     sobreSupVar: Color,
@@ -152,9 +170,22 @@ fun ItemChatMessenger(
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(socio.nombre ?: "Socio", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = sobreSup)
-            Text("Toca para chatear", color = sobreSupVar, fontSize = 14.sp, maxLines = 1)
+            Text(socio.nombre ?: "Socio", fontWeight = if (noLeidos > 0) FontWeight.ExtraBold else FontWeight.Bold, fontSize = 17.sp, color = sobreSup)
+            Text(if (noLeidos > 0) "Nuevo mensaje" else "Toca para chatear", 
+                color = if (noLeidos > 0) OrangePrimary else sobreSupVar, 
+                fontSize = 14.sp, 
+                maxLines = 1,
+                fontWeight = if (noLeidos > 0) FontWeight.Bold else FontWeight.Normal
+            )
         }
-        Text("Hoy", color = sobreSupVar, fontSize = 12.sp)
+        Column(horizontalAlignment = Alignment.End) {
+            Text("Hoy", color = sobreSupVar, fontSize = 12.sp)
+            if (noLeidos > 0) {
+                Spacer(Modifier.height(4.dp))
+                Badge(containerColor = OrangePrimary) {
+                    Text(noLeidos.toString(), color = Color.White)
+                }
+            }
+        }
     }
 }

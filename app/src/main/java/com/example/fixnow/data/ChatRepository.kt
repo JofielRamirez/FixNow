@@ -17,7 +17,8 @@ data class MensajeDB(
     val idReceptor: String,
     val contenido: String,
     @SerialName("created_at")
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    val leido: Boolean = false
 )
 
 object ChatRepository {
@@ -27,18 +28,28 @@ object ChatRepository {
         val mensaje = MensajeDB(
             idEmisor = emisorId,
             idReceptor = receptorId,
-            contenido = texto
+            contenido = texto,
+            leido = false
         )
         client.postgrest["mensajes"].insert(mensaje)
     }
 
     suspend fun obtenerMensajesHistoricos(miId: String, otroId: String): List<MensajeDB> {
         return try {
-            val mensajes = client.postgrest["mensajes"].select().decodeList<MensajeDB>()
-            mensajes.filter {
-                (it.idEmisor == miId && it.idReceptor == otroId) ||
-                (it.idEmisor == otroId && it.idReceptor == miId)
-            }.sortedBy { it.createdAt }
+            client.postgrest["mensajes"].select {
+                filter {
+                    or {
+                        and {
+                            eq("id_emisor", miId)
+                            eq("id_receptor", otroId)
+                        }
+                        and {
+                            eq("id_emisor", otroId)
+                            eq("id_receptor", miId)
+                        }
+                    }
+                }
+            }.decodeList<MensajeDB>().sortedBy { it.createdAt }
         } catch (e: Exception) {
             emptyList()
         }
@@ -55,9 +66,41 @@ object ChatRepository {
             }
     }
 
+    suspend fun marcarComoLeidos(miId: String, otroId: String) {
+        try {
+            client.postgrest["mensajes"].update({
+                set("leido", true)
+            }) {
+                filter {
+                    eq("id_emisor", otroId)
+                    eq("id_receptor", miId)
+                    eq("leido", false)
+                }
+            }
+        } catch (e: Exception) {
+            // Log error
+        }
+    }
+
+    fun escucharTotalMensajesNoLeidos(miId: String): Flow<Int> {
+        return client.postgrest["mensajes"]
+            .selectAsFlow(primaryKey = MensajeDB::id)
+            .map { lista ->
+                lista.count { it.idReceptor == miId && !it.leido }
+            }
+    }
+
     suspend fun obtenerConversaciones(miId: String): List<String> {
         return try {
-            val mensajes = client.postgrest["mensajes"].select().decodeList<MensajeDB>()
+            val mensajes = client.postgrest["mensajes"].select {
+                filter {
+                    or {
+                        eq("id_emisor", miId)
+                        eq("id_receptor", miId)
+                    }
+                }
+            }.decodeList<MensajeDB>()
+
             mensajes.map {
                 if (it.idEmisor == miId) it.idReceptor else it.idEmisor
             }.distinct()

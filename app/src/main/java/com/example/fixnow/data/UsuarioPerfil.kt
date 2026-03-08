@@ -21,5 +21,11 @@ data class UsuarioPerfil(
     @SerialName("url_identificacion")
     val urlIdentificacion: String? = null,
     @SerialName("url_antecedentes")
-    val urlAntecedentes: String? = null
+    val urlAntecedentes: String? = null,
+    @SerialName("latitud")
+    val latitud: Double? = null,
+    @SerialName("longitud")
+    val longitud: Double? = null,
+    @SerialName("disponible")
+    val disponible: Boolean? = true
 )
