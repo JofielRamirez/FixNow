@@ -11,10 +11,10 @@ import androidx.compose.material.icons.filled.ThumbUp
 data class Cita(
     val id: String? = null,
     @SerialName("id_cliente")
-    val idCliente: String,
+    val idCliente: String = "",
     @SerialName("id_socio")
-    val idSocio: String,
-    val fecha: String, 
+    val idSocio: String = "",
+    val fecha: String = "",
     val estado: String = "pendiente",
     val detalles: String? = null,
     @SerialName("lat_cliente")

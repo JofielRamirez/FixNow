@@ -29,16 +29,6 @@ android {
         )
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -54,7 +44,6 @@ android {
 }
 
 dependencies {
-
     // ---------- BASE ANDROID ----------
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -67,8 +56,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-
-    // ICONOS EXTENDIDOS
     implementation("androidx.compose.material:material-icons-extended")
 
     // ---------- NAVIGATION ----------
@@ -81,13 +68,12 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:storage-kt:$supabase_version")
     implementation("io.github.jan-tennert.supabase:realtime-kt:$supabase_version")
 
-    // ---------- KTOR 3 ----------
+    // ---------- KTOR 3 (OkHttp es el motor oficial para Supabase v3) ----------
     val ktor_version = "3.0.3"
     implementation("io.ktor:ktor-client-core:$ktor_version")
-    implementation("io.ktor:ktor-client-android:$ktor_version")
+    implementation("io.ktor:ktor-client-okhttp:$ktor_version")
     implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
-    implementation("io.ktor:ktor-utils:$ktor_version")
 
     // ---------- IMÁGENES ----------
     implementation("io.coil-kt:coil-compose:2.6.0")
@@ -99,6 +85,5 @@ dependencies {
     // ---------- SERIALIZATION ----------
     implementation(libs.kotlinx.serialization.json)
 
-    // ---------- TEST ----------
     testImplementation(libs.junit)
 }

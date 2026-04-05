@@ -27,5 +27,7 @@ data class UsuarioPerfil(
     @SerialName("longitud")
     val longitud: Double? = null,
     @SerialName("disponible")
-    val disponible: Boolean? = true
+    val disponible: Boolean? = true,
+    @SerialName("resumen_ia")
+    val resumen_ia: String? = null
 )
