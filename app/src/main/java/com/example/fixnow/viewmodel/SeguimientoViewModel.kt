@@ -1,13 +1,15 @@
+@file:OptIn(io.github.jan.supabase.annotations.SupabaseExperimental::class)
 package com.example.fixnow.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fixnow.data.*
 import io.github.jan.supabase.realtime.PostgresAction
-import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.decodeRecord
 import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.realtime
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -37,10 +39,7 @@ class SeguimientoViewModel : ViewModel() {
                 if (cita != null) {
                     val socio = UsuarioRepository.obtenerSocioPorId(cita.idSocio)
                     _uiState.update { it.copy(cita = cita, socio = socio, cargando = false) }
-                    
-                    escucharCambios(citaId, cita.idSocio)
-                } else {
-                    _uiState.update { it.copy(cargando = false, error = "Cita no encontrada") }
+                    escucharCambiosRealtime(citaId, cita.idSocio)
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(cargando = false, error = e.message) }
@@ -48,27 +47,25 @@ class SeguimientoViewModel : ViewModel() {
         }
     }
 
-    private fun escucharCambios(citaId: String, socioId: String) {
-        // Escuchar ubicación del socio
-        val channelSocio = client.channel("seguimiento_socio_$socioId")
-        val flowSocio = channelSocio.postgresChangeFlow<PostgresAction>(schema = "public") {
+    private fun escucharCambiosRealtime(citaId: String, socioId: String) {
+        val canalSocioSeguimiento = client.realtime.channel("seguimiento_socio_$socioId")
+
+        canalSocioSeguimiento.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = "Usuarios"
-            filter = "id=eq.$socioId"
-        }
-        flowSocio.onEach { action ->
+            filter("id", FilterOperator.EQ, socioId)
+        }.onEach { action ->
             if (action is PostgresAction.Update) {
                 val updatedSocio = action.decodeRecord<UsuarioPerfil>()
                 _uiState.update { it.copy(socio = updatedSocio) }
             }
         }.launchIn(viewModelScope)
 
-        // Escuchar estado de la cita
-        val channelCita = client.channel("seguimiento_cita_$citaId")
-        val flowCita = channelCita.postgresChangeFlow<PostgresAction>(schema = "public") {
+        val canalCitaSeguimiento = client.realtime.channel("seguimiento_cita_$citaId")
+
+        canalCitaSeguimiento.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = "citas"
-            filter = "id=eq.$citaId"
-        }
-        flowCita.onEach { action ->
+            filter("id", FilterOperator.EQ, citaId)
+        }.onEach { action ->
             if (action is PostgresAction.Update) {
                 val citaAct = action.decodeRecord<Cita>()
                 _uiState.update { it.copy(cita = citaAct) }
@@ -79,8 +76,8 @@ class SeguimientoViewModel : ViewModel() {
         }.launchIn(viewModelScope)
 
         viewModelScope.launch {
-            channelSocio.subscribe()
-            channelCita.subscribe()
+            canalSocioSeguimiento.subscribe()
+            canalCitaSeguimiento.subscribe()
         }
     }
 }
