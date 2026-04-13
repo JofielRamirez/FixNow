@@ -34,6 +34,7 @@ import com.example.fixnow.ui.theme.ColorSuccess
 import com.example.fixnow.ui.theme.ErrorRed
 import com.example.fixnow.data.SupabaseClient
 import com.example.fixnow.data.UsuarioRepository
+import com.example.fixnow.utils.ValidationUtils
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.launch
@@ -48,6 +49,11 @@ fun PantallaRegistro(navController: NavController) {
     var mensajeExito by remember { mutableStateOf("") }
     var cargando by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
+
+    var errorNombre by remember { mutableStateOf<String?>(null) }
+    var errorEmail by remember { mutableStateOf<String?>(null) }
+    var errorPassword by remember { mutableStateOf<String?>(null) }
+
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { visible = true }
@@ -123,8 +129,13 @@ fun PantallaRegistro(navController: NavController) {
 
                         CampoTextoIcono(
                             value = nombre,
-                            onValueChange = { nombre = it },
+                            onValueChange = {
+                                nombre = it
+                                errorNombre = null
+                            },
                             placeholder = "Nombre completo",
+                            isError = errorNombre != null,
+                            errorMessage = errorNombre,
                             leadingIcon = {
                                 Icon(Icons.Default.Person, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
                             }
@@ -134,8 +145,13 @@ fun PantallaRegistro(navController: NavController) {
 
                         CampoTextoIcono(
                             value = email,
-                            onValueChange = { email = it },
+                            onValueChange = {
+                                email = it
+                                errorEmail = null
+                            },
                             placeholder = "Correo electrónico",
+                            isError = errorEmail != null,
+                            errorMessage = errorEmail,
                             leadingIcon = {
                                 Icon(Icons.Default.Email, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
                             }
@@ -145,9 +161,14 @@ fun PantallaRegistro(navController: NavController) {
 
                         CampoTextoIcono(
                             value = password,
-                            onValueChange = { password = it },
+                            onValueChange = {
+                                password = it
+                                errorPassword = null
+                            },
                             placeholder = "Contraseña (mín. 8 caracteres)",
                             esPassword = !passwordVisible,
+                            isError = errorPassword != null,
+                            errorMessage = errorPassword,
                             leadingIcon = {
                                 Icon(Icons.Default.Lock, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
                             },
@@ -163,7 +184,6 @@ fun PantallaRegistro(navController: NavController) {
                             }
                         )
 
-                        // Indicador de fuerza de contraseña
                         if (password.isNotEmpty()) {
                             val fuerza = when {
                                 password.length >= 8 && password.any { it.isDigit() } && password.any { it.isLetter() } -> 3
@@ -224,47 +244,42 @@ fun PantallaRegistro(navController: NavController) {
 
                         Button(
                             onClick = {
-                                val emailLimpio = email.trim().lowercase()
-                                val passwordLimpio = password
-                                val nombreRegistro = nombre.trim()
-                                when {
-                                    nombreRegistro.isBlank() || emailLimpio.isBlank() || passwordLimpio.isBlank() ->
-                                        mensajeError = "Completa todos los campos"
-                                    passwordLimpio.length < 8 ->
-                                        mensajeError = "La contraseña debe tener al menos 8 caracteres"
-                                    !passwordLimpio.any { it.isDigit() } ->
-                                        mensajeError = "La contraseña debe contener al menos un número"
-                                    !passwordLimpio.any { it.isLetter() } ->
-                                        mensajeError = "La contraseña debe contener al menos una letra"
-                                    else -> {
-                                        mensajeError = ""
-                                        mensajeExito = ""
-                                        cargando = true
-                                        scope.launch {
-                                            try {
-                                                SupabaseClient.client.auth.signUpWith(Email) {
-                                                    this.email = emailLimpio
-                                                    this.password = passwordLimpio
-                                                }
-                                                val uid = SupabaseClient.client.auth.currentUserOrNull()?.id
-                                                if (uid != null) {
-                                                    try {
-                                                        UsuarioRepository.guardarUsuario(uid = uid, email = emailLimpio, nombre = nombreRegistro)
-                                                    } catch (_: Exception) {}
-                                                } else {
-                                                    mensajeExito = "¡Revisa tu correo para confirmar tu cuenta!"
-                                                    cargando = false
-                                                }
-                                            } catch (e: Exception) {
-                                                val msg = e.message ?: e.localizedMessage ?: ""
-                                                mensajeError = when {
-                                                    msg.contains("already registered", ignoreCase = true) -> "Este correo ya está registrado"
-                                                    msg.contains("rate limit", ignoreCase = true) || msg.contains("seconds", ignoreCase = true) -> "Espera un momento antes de intentarlo"
-                                                    msg.contains("invalid email", ignoreCase = true) -> "El correo no es válido"
-                                                    else -> "Error: $msg"
-                                                }
+                                errorNombre = ValidationUtils.validarNombre(nombre)
+                                errorEmail = ValidationUtils.validarEmail(email)
+                                errorPassword = ValidationUtils.validarPassword(password)
+
+                                if (errorNombre == null && errorEmail == null && errorPassword == null) {
+                                    mensajeError = ""
+                                    mensajeExito = ""
+                                    cargando = true
+                                    scope.launch {
+                                        try {
+                                            SupabaseClient.client.auth.signUpWith(Email) {
+                                                this.email = email.trim().lowercase()
+                                                this.password = password
+                                            }
+                                            val uid = SupabaseClient.client.auth.currentUserOrNull()?.id
+                                            if (uid != null) {
+                                                try {
+                                                    UsuarioRepository.guardarUsuario(
+                                                        uid = uid,
+                                                        email = email.trim().lowercase(),
+                                                        nombre = nombre.trim()
+                                                    )
+                                                } catch (_: Exception) {}
+                                            } else {
+                                                mensajeExito = "¡Revisa tu correo para confirmar tu cuenta!"
                                                 cargando = false
                                             }
+                                        } catch (e: Exception) {
+                                            val msg = e.message ?: e.localizedMessage ?: ""
+                                            mensajeError = when {
+                                                msg.contains("already registered", ignoreCase = true) -> "Este correo ya está registrado"
+                                                msg.contains("rate limit", ignoreCase = true) || msg.contains("seconds", ignoreCase = true) -> "Espera un momento antes de intentarlo"
+                                                msg.contains("invalid email", ignoreCase = true) -> "El correo no es válido"
+                                                else -> "Error: $msg"
+                                            }
+                                            cargando = false
                                         }
                                     }
                                 }
