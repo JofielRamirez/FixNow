@@ -34,6 +34,7 @@ import com.example.fixnow.ui.theme.OrangeDark
 import com.example.fixnow.ui.theme.OrangeLight
 import com.example.fixnow.ui.theme.ErrorRed
 import com.example.fixnow.data.SupabaseClient
+import com.example.fixnow.utils.ValidationUtils
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.coroutines.launch
@@ -46,13 +47,16 @@ fun PantallaLogin(navController: NavController) {
     var mensajeError by remember { mutableStateOf("") }
     var cargando by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
+
+    var errorEmail by remember { mutableStateOf<String?>(null) }
+    var errorPassword by remember { mutableStateOf<String?>(null) }
+
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { visible = true }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // Fondo superior naranja
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -60,7 +64,6 @@ fun PantallaLogin(navController: NavController) {
                 .background(brush = Brush.verticalGradient(colors = listOf(OrangeDark, OrangePrimary)))
         )
 
-        // Fondo inferior gris claro
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -73,7 +76,6 @@ fun PantallaLogin(navController: NavController) {
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Zona logo
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { -40 })
@@ -109,7 +111,6 @@ fun PantallaLogin(navController: NavController) {
                 }
             }
 
-            // Card flotante con formulario
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { 80 })
@@ -136,8 +137,13 @@ fun PantallaLogin(navController: NavController) {
 
                         CampoTextoIcono(
                             value = usuario,
-                            onValueChange = { usuario = it },
+                            onValueChange = {
+                                usuario = it
+                                errorEmail = null
+                            },
                             placeholder = "Correo electrónico",
+                            isError = errorEmail != null,
+                            errorMessage = errorEmail,
                             leadingIcon = {
                                 Icon(Icons.Default.Email, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
                             }
@@ -147,9 +153,14 @@ fun PantallaLogin(navController: NavController) {
 
                         CampoTextoIcono(
                             value = password,
-                            onValueChange = { password = it },
+                            onValueChange = {
+                                password = it
+                                errorPassword = null
+                            },
                             placeholder = "Contraseña",
                             esPassword = !passwordVisible,
+                            isError = errorPassword != null,
+                            errorMessage = errorPassword,
                             leadingIcon = {
                                 Icon(Icons.Default.Lock, null, tint = OrangePrimary, modifier = Modifier.size(20.dp))
                             },
@@ -182,18 +193,17 @@ fun PantallaLogin(navController: NavController) {
 
                         Button(
                             onClick = {
-                                val emailLimpio = usuario.trim().lowercase()
-                                val passLimpia = password.trim()
-                                if (emailLimpio.isBlank() || passLimpia.isBlank()) {
-                                    mensajeError = "Completa todos los campos"
-                                } else {
+                                errorEmail = ValidationUtils.validarEmail(usuario)
+                                errorPassword = if (password.isBlank()) "Ingresa tu contraseña" else null
+
+                                if (errorEmail == null && errorPassword == null) {
                                     mensajeError = ""
                                     cargando = true
                                     scope.launch {
                                         try {
                                             SupabaseClient.client.auth.signInWith(Email) {
-                                                this.email = emailLimpio
-                                                this.password = passLimpia
+                                                this.email = usuario.trim().lowercase()
+                                                this.password = password.trim()
                                             }
                                             Log.d("LOGIN", "Sesión iniciada con éxito")
                                         } catch (e: Exception) {
@@ -252,28 +262,43 @@ fun CampoTextoIcono(
     onValueChange: (String) -> Unit,
     placeholder: String,
     esPassword: Boolean = false,
+    isError: Boolean = false,
+    errorMessage: String? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        placeholder = { Text(placeholder, fontSize = 14.sp, color = Color(0xFFBDBDBD)) },
-        leadingIcon = leadingIcon,
-        trailingIcon = trailingIcon,
-        visualTransformation = if (esPassword) PasswordVisualTransformation() else VisualTransformation.None,
-        keyboardOptions = if (esPassword) KeyboardOptions(keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
-        shape = RoundedCornerShape(14.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = OrangePrimary,
-            unfocusedBorderColor = Color(0xFFE0E0E0),
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color(0xFFFAFAFA),
-            cursorColor = OrangePrimary,
-            focusedTextColor = Color(0xFF1A1A1A),    // ← NUEVO
-            unfocusedTextColor = Color(0xFF1A1A1A)   // ← NUEVO
-        ),
-        modifier = Modifier.fillMaxWidth()
-    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            placeholder = { Text(placeholder, fontSize = 14.sp, color = Color(0xFFBDBDBD)) },
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
+            isError = isError,
+            visualTransformation = if (esPassword) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions = if (esPassword) KeyboardOptions(keyboardType = KeyboardType.Password) else KeyboardOptions.Default,
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = OrangePrimary,
+                unfocusedBorderColor = Color(0xFFE0E0E0),
+                errorBorderColor = ErrorRed,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color(0xFFFAFAFA),
+                errorContainerColor = ErrorRed.copy(alpha = 0.05f),
+                cursorColor = OrangePrimary,
+                focusedTextColor = Color(0xFF1A1A1A),
+                unfocusedTextColor = Color(0xFF1A1A1A)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (isError && errorMessage != null) {
+            Text(
+                text = errorMessage,
+                color = ErrorRed,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+            )
+        }
+    }
 }
