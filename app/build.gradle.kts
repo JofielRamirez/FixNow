@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation("androidx.core:core-splashscreen:1.2.0")
 
+
     // ---------- COMPOSE ----------
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -86,4 +87,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("io.mockk:mockk:1.13.10")
 }
