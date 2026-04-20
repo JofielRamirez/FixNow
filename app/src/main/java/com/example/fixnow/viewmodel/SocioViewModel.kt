@@ -39,7 +39,9 @@ class SocioViewModel : ViewModel() {
     val uiState = _uiState.asStateFlow()
 
     private val client = SupabaseClient.client
-    private val userId = client.auth.currentSessionOrNull()?.user?.id
+    internal var userIdOverride: String? = null
+    private val userId: String?
+        get() = userIdOverride ?: client.auth.currentSessionOrNull()?.user?.id
 
     init {
         cargarDatosSocio()
