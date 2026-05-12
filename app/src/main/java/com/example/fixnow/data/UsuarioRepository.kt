@@ -9,57 +9,48 @@ import androidx.compose.material.icons.filled.ThumbUp
 object UsuarioRepository {
     private val client = SupabaseClient.client
 
+    suspend fun obtenerTodosLosPrestadores(): List<UsuarioPerfil> {
+        return try {
+            client.postgrest["Usuarios"].select {
+                filter { eq("es_prestador", true) }
+            }.decodeList<UsuarioPerfil>()
+        } catch (e: Exception) {
+            Log.e("REPO", "Error obteniendo prestadores para IA: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun guardarUsuario(uid: String, email: String, nombre: String) {
-        val perfil = UsuarioPerfil(
-            id = uid,
-            nombre = nombre,
-            email = email,
-            fechaRegistro = System.currentTimeMillis()
-        )
+        val perfil = UsuarioPerfil(id = uid, nombre = nombre, email = email, fechaRegistro = System.currentTimeMillis())
         client.postgrest["Usuarios"].insert(perfil)
     }
 
     suspend fun convertirseEnPrestador(uid: String, tipo: String) {
         val uidLimpio = uid.replace("\"", "").trim()
-        client.postgrest["Usuarios"].update(
-            {
-                set("es_prestador", true)
-                set("tipo_servicio", tipo)
-            }
-        ) {
-            filter { eq("id", uidLimpio) }
-        }
+        client.postgrest["Usuarios"].update({
+            set("es_prestador", true)
+            set("tipo_servicio", tipo)
+        }) { filter { eq("id", uidLimpio) } }
     }
 
     suspend fun obtenerSociosPorCategoria(categoria: String): List<UsuarioPerfil> {
         return try {
-            val respuesta = client.postgrest["Usuarios"].select {
+            client.postgrest["Usuarios"].select {
                 filter {
                     eq("es_prestador", true)
                     ilike("tipo_servicio", "%$categoria%") 
                 }
             }.decodeList<UsuarioPerfil>()
-
-            Log.d("SOCIOS_DB", "Categoría: $categoria | Encontrados: ${respuesta.size}")
-            respuesta
-        } catch (e: Exception) {
-            Log.e("REPO_ERROR", "Error al obtener socios: ${e.message}")
-            emptyList()
-        }
+        } catch (e: Exception) { emptyList() }
     }
 
     suspend fun obtenerFotosDeTrabajos(uid: String? = null): List<String> {
         return try {
             val respuesta = client.postgrest["trabajos"].select {
-                if (uid != null) {
-                    filter { eq("id_socio", uid) }
-                }
+                if (uid != null) filter { eq("id_socio", uid) }
             }.decodeList<Map<String, String>>()
             respuesta.map { it["url_imagen"] ?: "" }.filter { it.isNotEmpty() }
-        } catch (e: Exception) {
-            Log.e("REPO", "Error al obtener fotos: ${e.message}")
-            emptyList()
-        }
+        } catch (e: Exception) { emptyList() }
     }
 
     suspend fun subirFotoTrabajo(uid: String, imageBytes: ByteArray) {
@@ -80,9 +71,24 @@ object UsuarioRepository {
             client.postgrest["Usuarios"].select {
                 filter { eq("id", uid) }
             }.decodeSingleOrNull<UsuarioPerfil>()
-        } catch (e: Exception) {
-            Log.e("REPO", "Error al obtener socio: ${e.message}")
-            null
-        }
+        } catch (e: Exception) { null }
+    }
+
+    suspend fun insertarResena(resena: Resena) {
+        client.postgrest["resenas"].insert(resena)
+    }
+
+    suspend fun obtenerResenasPorSocio(socioId: String): List<Resena> {
+        return try {
+            client.postgrest["resenas"].select {
+                filter { eq("socio_id", socioId) }
+            }.decodeList<Resena>()
+        } catch (e: Exception) { emptyList() }
+    }
+
+    suspend fun actualizarResumenIA(socioId: String, resumen: String) {
+        client.postgrest["Usuarios"].update({
+            set("resumen_ia", resumen)
+        }) { filter { eq("id", socioId) } }
     }
 }

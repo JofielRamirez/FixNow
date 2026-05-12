@@ -26,14 +26,20 @@ import coil.compose.AsyncImage
 import com.example.fixnow.ui.theme.OrangePrimary
 import com.example.fixnow.data.UsuarioPerfil
 import com.example.fixnow.data.UsuarioRepository
+import com.example.fixnow.data.Resena
+import com.example.fixnow.data.IAService
+import com.example.fixnow.data.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.launch
 
 @Composable
 fun PantallaDetalleSocio(navController: NavController, socioId: String) {
+    val scope = rememberCoroutineScope()
     var socio by remember { mutableStateOf<UsuarioPerfil?>(null) }
     var fotosTrabajos by remember { mutableStateOf<List<String>>(emptyList()) }
     var cargando by remember { mutableStateOf(true) }
     var nuevoComentario by remember { mutableStateOf("") }
-    val listaComentarios = remember { mutableStateListOf<String>() }
+    val listaResenas = remember { mutableStateListOf<Resena>() }
 
     // Colores del tema
     val fondo       = MaterialTheme.colorScheme.background
@@ -46,6 +52,10 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
         cargando = true
         socio = UsuarioRepository.obtenerSocioPorId(socioId)
         fotosTrabajos = UsuarioRepository.obtenerFotosDeTrabajos(socioId)
+        val resenas = UsuarioRepository.obtenerResenasPorSocio(socioId)
+        listaResenas.clear()
+        // Agregamos las reseñas invertidas para ver las más nuevas primero
+        listaResenas.addAll(resenas.reversed())
         cargando = false
     }
 
@@ -74,7 +84,7 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(fondo)                        // ← era Color.White
+                    .background(fondo)
                     .padding(paddingValues)
             ) {
                 // ── Header con foto ──────────────────────────────
@@ -107,61 +117,55 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                         Surface(
                             modifier = Modifier.size(80.dp),
                             shape = CircleShape,
-                            border = androidx.compose.foundation.BorderStroke(4.dp, fondo), // ← era Color.White
+                            border = androidx.compose.foundation.BorderStroke(4.dp, fondo),
                             shadowElevation = 4.dp
                         ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.background(superficie)) { // ← era Color.White
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.background(superficie)) {
                                 Text(socio?.nombre?.take(1)?.uppercase() ?: "S", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
                             }
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(socio?.nombre ?: "Sin nombre", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = sobreSup) // ← tema
+                            Text(socio?.nombre ?: "Sin nombre", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = sobreSup)
                             Spacer(Modifier.width(8.dp))
                             Box(Modifier.size(10.dp).clip(CircleShape).background(Color(0xFF4CAF50)))
                         }
-                        Text(socio?.tipo_servicio ?: "Servicios generales", color = sobreSupVar, fontSize = 14.sp) // ← era Color.Gray
+                        Text(socio?.tipo_servicio ?: "Servicios generales", color = sobreSupVar, fontSize = 14.sp)
                     }
                 }
 
-                // ── Opiniones ────────────────────────────────────
+                // ── Resumen de IA ────────────────────────────────
+                item {
+                    val resumenActual = socio?.resumenIA
+                    if (resumenActual != null && resumenActual.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AutoAwesome, "IA", tint = Color(0xFF1976D2))
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text("Resumen Inteligente", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF1565C0))
+                                    Text(resumenActual, fontSize = 13.sp, color = Color.DarkGray)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Opiniones estadísticas ───────────────────────
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)), // naranja decorativo
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Sus clientes dicen:", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF5D4037))
+                            Text("Opinión de la comunidad:", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF5D4037))
                             Spacer(Modifier.height(4.dp))
-                            Text("Los clientes están muy satisfechos con el trabajo realizado.", fontSize = 13.sp, color = Color(0xFF6D4C41))
-                            Spacer(Modifier.height(12.dp))
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = {},
-                                    modifier = Modifier.height(38.dp).wrapContentWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                                ) {
-                                    Icon(Icons.Default.ThumbUp, null, Modifier.size(16.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Positivas (22)", fontSize = 12.sp)
-                                }
-                                Button(
-                                    onClick = {},
-                                    modifier = Modifier.height(38.dp).wrapContentWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336)),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                                ) {
-                                    Icon(Icons.Default.ThumbDown, null, Modifier.size(16.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Negativas (0)", fontSize = 12.sp)
-                                }
-                            }
+                            Text("Basado en ${listaResenas.size} reseñas.", fontSize = 13.sp, color = Color(0xFF6D4C41))
                         }
                     }
                 }
@@ -170,7 +174,7 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                 item {
                     Column(modifier = Modifier.padding(vertical = 20.dp)) {
                         Text("Trabajos realizados", fontWeight = FontWeight.Bold, fontSize = 17.sp,
-                            color = sobreSup,                                    // ← tema
+                            color = sobreSup,
                             modifier = Modifier.padding(start = 20.dp, bottom = 10.dp))
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 20.dp),
@@ -203,8 +207,8 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = OrangePrimary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                                focusedContainerColor = superficie,       // ← tema
-                                unfocusedContainerColor = superficie,     // ← tema
+                                focusedContainerColor = superficie,
+                                unfocusedContainerColor = superficie,
                                 focusedTextColor = sobreSup,
                                 unfocusedTextColor = sobreSup
                             )
@@ -213,8 +217,40 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                         Button(
                             onClick = {
                                 if (nuevoComentario.isNotBlank()) {
-                                    listaComentarios.add(0, nuevoComentario)
-                                    nuevoComentario = ""
+                                    val user = SupabaseClient.client.auth.currentUserOrNull()
+                                    val metadata = user?.userMetadata
+                                    val rawName = metadata?.get("nombre")?.toString() ?: "Anónimo"
+                                    val userName = rawName.replace("\"", "")
+                                    
+                                    val resena = Resena(
+                                        socioId = socioId,
+                                        usuarioId = user?.id ?: "anon",
+                                        usuarioNombre = userName,
+                                        comentario = nuevoComentario
+                                    )
+                                    
+                                    scope.launch {
+                                        try {
+                                            UsuarioRepository.insertarResena(resena)
+                                            listaResenas.add(0, resena)
+                                            val textoEnviado = nuevoComentario
+                                            nuevoComentario = ""
+                                            
+                                            // Lógica de activación de IA: 1ra reseña o cada 3 nuevas (4, 7, 10...)
+                                            val total = listaResenas.size
+                                            if (total == 1 || (total - 1) % 3 == 0) {
+                                                val todosLosComentarios = listaResenas.map { it.comentario }
+                                                val aiResult = IAService.generarResumenIA(todosLosComentarios)
+                                                if (aiResult.isSuccess) {
+                                                    val nuevoResumen = aiResult.getOrNull() ?: ""
+                                                    UsuarioRepository.actualizarResumenIA(socioId, nuevoResumen)
+                                                    socio = socio?.copy(resumenIA = nuevoResumen)
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            // Error al guardar reseña
+                                        }
+                                    }
                                 }
                             },
                             modifier = Modifier.align(Alignment.End),
@@ -226,10 +262,10 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                     }
                 }
 
-                items(listaComentarios) { comentario ->
+                items(listaResenas) { resena ->
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-                        colors = CardDefaults.cardColors(containerColor = supVar)  // ← era Color(0xFFF9F9F9)
+                        colors = CardDefaults.cardColors(containerColor = supVar)
                     ) {
                         Row(modifier = Modifier.padding(12.dp)) {
                             Box(Modifier.size(30.dp).background(sobreSupVar.copy(alpha = 0.3f), CircleShape), contentAlignment = Alignment.Center) {
@@ -237,8 +273,8 @@ fun PantallaDetalleSocio(navController: NavController, socioId: String) {
                             }
                             Spacer(Modifier.width(10.dp))
                             Column {
-                                Text("Usuario", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = sobreSup)
-                                Text(comentario, fontSize = 13.sp, color = sobreSupVar) // ← era Color.DarkGray
+                                Text(resena.usuarioNombre, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = sobreSup)
+                                Text(resena.comentario, fontSize = 13.sp, color = sobreSupVar)
                             }
                         }
                     }

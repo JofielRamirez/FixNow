@@ -13,5 +13,7 @@ data class UsuarioPerfil(
     @SerialName("tipo_servicio")
     val tipo_servicio: String? = null,
     @SerialName("fecha_registro")
-    val fechaRegistro: Long? = null // Cambiado a Long para que coincida con la DB
+    val fechaRegistro: Long? = null,
+    @SerialName("resumen_ia")
+    val resumenIA: String? = null
 )

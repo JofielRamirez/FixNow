@@ -53,13 +53,28 @@ fun PantallaInicio(navController: NavController) {
     val sobreSup   = MaterialTheme.colorScheme.onSurface
     val supVar     = MaterialTheme.colorScheme.surfaceVariant
 
-    Scaffold(bottomBar = { BottomNavBar(navController) }) { padding ->
+    Scaffold(
+        bottomBar = { BottomNavBar(navController) },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { navController.navigate("asistente_ia") },
+                containerColor = OrangePrimary,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(30.dp),
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Icon(Icons.Default.AutoAwesome, "Asistente IA")
+                Spacer(Modifier.width(8.dp))
+                Text("Preguntar a IA", fontWeight = FontWeight.Bold)
+            }
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .background(fondo)                              // ← tema
+                .background(fondo)
         ) {
             // ── Header naranja ───────────────────────────────────
             Box(
@@ -119,7 +134,7 @@ fun PantallaInicio(navController: NavController) {
                             }
                         ) {
                             Box(
-                                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(supVar), // ← tema
+                                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(supVar),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(icon, null, tint = OrangePrimary, modifier = Modifier.size(26.dp))
@@ -175,7 +190,7 @@ fun CardFotoSoloVista(url: String?) {
         if (url != null) {
             AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else {
-            Box(Modifier.fillMaxSize().background(supVar), contentAlignment = Alignment.Center) {  // ← tema
+            Box(Modifier.fillMaxSize().background(supVar), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Place, null, tint = sobreSupVar, modifier = Modifier.size(28.dp))
                     Spacer(modifier = Modifier.height(4.dp))
@@ -191,7 +206,7 @@ fun CardSocioDestacado(nombre: String, resenas: Int, tiempo: String, categoria: 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = superficie),   // ← tema
+        colors = CardDefaults.cardColors(containerColor = superficie),
         elevation = CardDefaults.cardElevation(3.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -200,7 +215,7 @@ fun CardSocioDestacado(nombre: String, resenas: Int, tiempo: String, categoria: 
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(nombre, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = sobreSup)         // ← tema
+                Text(nombre, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = sobreSup)
                 Text(categoria, fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.Medium)
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                     Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(13.dp))
@@ -218,7 +233,7 @@ fun BottomNavBar(navController: NavController) {
     val currentRoute = navBackStackEntry?.destination?.route
 
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,          // ← tema
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp
     ) {
         listOf(
@@ -243,8 +258,8 @@ fun BottomNavBar(navController: NavController) {
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = OrangePrimary,
                     selectedTextColor = OrangePrimary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,   // ← tema
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,   // ← tema
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     indicatorColor = Color(0xFFFFF3E0)
                 )
             )

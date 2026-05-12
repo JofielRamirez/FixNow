@@ -84,6 +84,7 @@ fun AppNavigation() {
         composable("servicios") { PantallaServicios(navController) }
         composable("perfil")   { PantallaPerfil(navController) }
         composable("mensajes") { PantallaListaChats(navController) }
+        composable("asistente_ia") { PantallaAsistenteIA(navController) }
         composable("detalle_socio/{socioId}") { backStackEntry ->
             PantallaDetalleSocio(navController, backStackEntry.arguments?.getString("socioId") ?: "")
         }
